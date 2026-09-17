@@ -1,31 +1,23 @@
 <template>
-  <main ref="shellRef" class="inbox-shell" :class="{ 'dynamic-feed-embedded': props.embedded, 'feed-hidden': props.embedded && !props.feedVisible, 'detail-open': !props.embedded && Boolean(localSelectedCard), 'sidebar-collapsed': !props.embedded && sidebarCollapsed }">
+  <main class="inbox-shell" :class="{ 'dynamic-feed-embedded': props.embedded, 'feed-hidden': props.embedded && !props.feedVisible, 'sidebar-collapsed': !props.embedded && sidebarCollapsed }">
     <AppNav v-if="!props.embedded" active="moments" :trash-count="trash.count" :collapsed="sidebarCollapsed" @update:collapsed="onSidebarCollapsedUpdate" @open-trash="trash.setOpen(true)" @open-tools="openDynamicTools" @navigate-tab="onSharedTabSelect" />
     <TopToolbar
       ref="toolbarRef"
-      :view-mode="viewMode"
-      :trash-count="trash.count"
       :hide-want-watch="hideWantWatch"
       :open-video-on-want-watch="openVideoOnWantWatch"
+      :hover-autoplay="hoverAutoplay"
       :sidebar-collapsed="sidebarCollapsed"
-      :category-filter="categoryFilter"
-      :ai-configured="classification.configured"
-      :ai-classifying="classification.classifying"
-      :ai-error="classification.error"
-      @open-trash="trash.setOpen(true)"
       @toggle-hide-want-watch="onToggleHideWantWatch"
       @toggle-open-video-on-want-watch="onToggleOpenVideoOnWantWatch"
+      @toggle-hover-autoplay="onToggleHoverAutoplay"
       @toggle-sidebar-collapsed="onToggleSidebarCollapsed"
-      @update:view-mode="onViewModeUpdate"
-      @update:category-filter="onCategoryFilterUpdate"
-      @save-ai-key="onSaveAiKey"
     />
 
     <section v-if="viewMode === 'inbox' && inbox.error" class="inbox-error">
       {{ inbox.error }}
     </section>
 
-    <section v-else-if="viewMode === 'inbox'" class="inbox-content">
+    <section v-else-if="viewMode === 'inbox'" class="inbox-content dynamic-inbox-content">
       <InboxGroup
         v-for="group in displayGroups"
         :key="group.key"
@@ -33,20 +25,19 @@
         :pending-map="decision.pendingMap"
         :want-watch-map="wantWatchMap"
         :open-video-on-want-watch="openVideoOnWantWatch"
+        :hover-autoplay="hoverAutoplay"
         :final-count-map="filteredFinalGroupCounts"
         :leave-reason-map="cardLeaveReasons"
         :enter-card-ids="inbox.enterAnimatedIds"
         :following-up-map="decision.followingUpMap"
         :relation-pending-mid="decision.relationPendingMid"
         :transcriber-map="transcriberMap"
-        :selected-id="activeSelectedCardId"
         @want-watch="onWantWatch"
         @help-read="onHelpRead"
         @dislike="onDislike"
         @toggle-follow="onToggleFollow"
         @leave-complete="onCardLeaveComplete"
         @enter-complete="onCardEnterComplete"
-        @select-card="onSelectCard"
       />
       <p v-if="inbox.loading && visibleCardCount === 0" class="inbox-load-more-tip">正在加载动态...</p>
       <p v-else-if="isFillingList" class="inbox-load-more-tip">正在补足列表...</p>
@@ -72,31 +63,18 @@
       @restore-all="onRestoreAll"
       @clear-all="onClearAll"
     />
-    <VideoDetailPanel
-      v-if="!props.embedded"
-      :card="localSelectedCard"
-      :transcriber-state="localSelectedCard ? transcriber.getForCard(localSelectedCard) : undefined"
-      :pending="Boolean(localSelectedCard && decision.pendingMap[localSelectedCard.dynamicId])"
-      :want-watched="Boolean(localSelectedCard && wantWatchMap[localSelectedCard.dynamicId])"
-      @close="closeLocalSelectedCard"
-      @want-watch="localSelectedCard && onWantWatch(localSelectedCard)"
-      @help-read="localSelectedCard && onHelpRead(localSelectedCard)"
-      @dislike="localSelectedCard && onDetailDislike(localSelectedCard)"
-    />
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 
 import TopToolbar from "../components/TopToolbar.vue"
 import AppNav from "../components/AppNav.vue"
 import type { HomeTabValue } from "../components/HomeTabsBar.vue"
 import UpFilterView from "../components/UpFilterView.vue"
 import TrashModal from "../components/TrashModal.vue"
-import VideoDetailPanel from "../components/VideoDetailPanel.vue"
 import type { ViewMode } from "../domain/view-mode"
-import { inferContentCategory, type ContentCategoryFilter } from "../domain/content-category"
 import { getDateGroupKey } from "../domain/group-by-date"
 import { getPublishAfterTimestamp, normalizePublishAfterDate } from "../domain/publish-date-filter"
 import type { DateGroup, VideoDynamicCard } from "../domain/types"
@@ -105,19 +83,18 @@ import { useDecisionStore } from "../store/decision"
 import { useInboxStore } from "../store/inbox"
 import { useUpFilterStore } from "../store/up-filter"
 import { useTrashStore } from "../store/trash"
-import { useContentClassificationStore } from "../store/content-classification"
 import { useTranscriberStore } from "../store/transcriber"
 import { readPersistedState, writePersistedState } from "../services/storage"
+import { fetchWatchLaterVideos } from "../services/bilibili-api"
 import { showToast } from "../services/toast"
-import { animateGridReflow, captureCardRects, type CardLeaveVariant } from "../utils/motion"
+import { type CardLeaveVariant } from "../utils/motion"
 
 type SearchScope = "dynamics" | "bilibili"
 
 const persistedState = readPersistedState()
-const props = withDefaults(defineProps<{ embedded?: boolean; feedVisible?: boolean; selectedCardId?: string }>(), {
+const props = withDefaults(defineProps<{ embedded?: boolean; feedVisible?: boolean; hoverAutoplay?: boolean }>(), {
   embedded: false,
   feedVisible: true,
-  selectedCardId: "",
 })
 const emit = defineEmits<{
   (event: "settings-change", settings: {
@@ -125,15 +102,14 @@ const emit = defineEmits<{
     dynamicPublishAfterDate: string
     hideWantWatch: boolean
     openVideoOnWantWatch: boolean
+    hoverAutoplay: boolean
     sidebarCollapsed: boolean
   }): void
-  (event: "select-card", card: VideoDynamicCard): void
 }>()
 const inbox = useInboxStore()
 const upFilter = useUpFilterStore()
 const decision = useDecisionStore()
 const trash = useTrashStore()
-const classification = useContentClassificationStore()
 const transcriber = useTranscriberStore()
 const searchQuery = ref("")
 const searchScope = ref<SearchScope>("dynamics")
@@ -142,11 +118,8 @@ const minDurationMinutes = ref(persistedState.dynamicMinDurationMinutes)
 const publishAfterDate = ref(persistedState.dynamicPublishAfterDate)
 const hideWantWatch = ref(persistedState.hideWantWatch)
 const openVideoOnWantWatch = ref(persistedState.openVideoOnWantWatch)
+const hoverAutoplay = ref(props.hoverAutoplay ?? persistedState.hoverAutoplay)
 const sidebarCollapsed = ref(persistedState.sidebarCollapsed)
-const categoryFilter = ref<ContentCategoryFilter>("all")
-const localSelectedCard = ref<VideoDynamicCard | null>(null)
-const shellRef = ref<HTMLElement | null>(null)
-const activeSelectedCardId = computed(() => props.embedded ? props.selectedCardId : localSelectedCard.value?.dynamicId ?? "")
 const cardLeaveReasons = ref<Record<string, CardLeaveVariant>>({})
 const leavingGroupCounts = ref<Record<string, number>>({})
 let pendingFillAfterLeave = 0
@@ -164,10 +137,6 @@ function openDynamicTools(): void {
   toolbarRef.value?.openToolsPanel()
 }
 
-function setCategoryFilter(value: ContentCategoryFilter): void {
-  onCategoryFilterUpdate(value)
-}
-
 function setMinDuration(value: string): void {
   onMinDurationMinutesUpdate(value)
 }
@@ -182,39 +151,13 @@ function setSearchQuery(value: string): void {
   void inbox.fillAfterHide(getScrollRoot(), passesDisplayFilters)
 }
 
-function transitionCardLayout(update: () => void): void {
-  const shell = shellRef.value
-  const before = shell ? captureCardRects(shell) : new Map<HTMLElement, DOMRect>()
-  shell?.classList.add("layout-flip-active")
-  update()
-  void nextTick(() => {
-    if (!shell) return
-    animateGridReflow(shell, before, () => shell.classList.remove("layout-flip-active"))
-  })
-}
-
-defineExpose({ openSettings: openDynamicTools, refreshFeed: reloadMoments, setCategoryFilter, setMinDuration, setPublishAfter, setSearchQuery })
+defineExpose({ openSettings: openDynamicTools, refreshFeed: reloadMoments, setMinDuration, setPublishAfter, setSearchQuery })
 
 function onSharedTabSelect(tab: HomeTabValue): void {
   if (tab === "following") return
   window.location.href = tab === "recommended"
     ? "https://www.bilibili.com/"
     : "https://www.bilibili.com/?billnext=" + tab
-}
-
-function onSelectCard(card: VideoDynamicCard): void {
-  if (props.embedded) emit("select-card", card)
-  else if (localSelectedCard.value?.dynamicId !== card.dynamicId) transitionCardLayout(() => { localSelectedCard.value = card })
-}
-
-function closeLocalSelectedCard(): void {
-  if (!localSelectedCard.value) return
-  transitionCardLayout(() => { localSelectedCard.value = null })
-}
-
-function onDetailDislike(card: VideoDynamicCard): void {
-  void onDislike(card)
-  closeLocalSelectedCard()
 }
 
 function getScrollRoot(): HTMLElement | null {
@@ -235,8 +178,7 @@ const hasActiveDisplayFilters = computed(
     (searchScope.value === "dynamics" && normalizedQuery.value.length > 0) ||
     minDurationSeconds.value > 0 ||
     publishAfterDate.value.length > 0 ||
-    hideWantWatch.value ||
-    categoryFilter.value !== "all",
+    hideWantWatch.value,
 )
 const minDurationSeconds = computed(() => {
   const text = minDurationMinutes.value.trim()
@@ -251,7 +193,8 @@ const minDurationSeconds = computed(() => {
 })
 
 function passesDisplayFilters(item: VideoDynamicCard): boolean {
-  if (hideWantWatch.value && decision.wantWatchIds.has(item.dynamicId)) {
+  if (decision.isDisliked(item)) return false
+  if (hideWantWatch.value && decision.isWantWatch(item)) {
     return false
   }
   const matchesDuration =
@@ -261,10 +204,6 @@ function passesDisplayFilters(item: VideoDynamicCard): boolean {
     return false
   }
   if (publishAfterDate.value && item.publishAt < getPublishAfterTimestamp(publishAfterDate.value)) {
-    return false
-  }
-  const resolvedCategory = classification.labels[item.dynamicId] ?? inferContentCategory(item)
-  if (categoryFilter.value !== "all" && resolvedCategory !== categoryFilter.value) {
     return false
   }
   if (searchScope.value !== "dynamics" || !normalizedQuery.value) {
@@ -308,8 +247,8 @@ const visibleCardCount = computed(() => {
 
 const wantWatchMap = computed(() => {
   const map: Record<string, boolean> = {}
-  for (const id of decision.wantWatchIds) {
-    map[id] = true
+  for (const card of inbox.allCards) {
+    if (decision.isWantWatch(card)) map[card.dynamicId] = true
   }
   return map
 })
@@ -408,6 +347,13 @@ function onToggleOpenVideoOnWantWatch(): void {
   showToast(openVideoOnWantWatch.value ? "点击“想看”时将打开视频" : "点击“想看”时不再打开视频")
 }
 
+function onToggleHoverAutoplay(): void {
+  hoverAutoplay.value = !hoverAutoplay.value
+  writePersistedState({ hoverAutoplay: hoverAutoplay.value })
+  emitSettingsChange()
+  showToast(hoverAutoplay.value ? "已开启悬停自动播放" : "已关闭悬停自动播放")
+}
+
 function onSidebarCollapsedUpdate(value: boolean): void {
   if (sidebarCollapsed.value === value) return
   sidebarCollapsed.value = value
@@ -454,6 +400,7 @@ function emitSettingsChange(): void {
     dynamicPublishAfterDate: publishAfterDate.value,
     hideWantWatch: hideWantWatch.value,
     openVideoOnWantWatch: openVideoOnWantWatch.value,
+    hoverAutoplay: hoverAutoplay.value,
     sidebarCollapsed: sidebarCollapsed.value,
   })
 }
@@ -461,23 +408,6 @@ function emitSettingsChange(): void {
 function onHelpRead(card: VideoDynamicCard): void {
   transcriber.markTranscribing(card)
   window.setTimeout(() => void transcriber.refresh().catch(() => undefined), 1500)
-}
-
-function onCategoryFilterUpdate(value: ContentCategoryFilter): void {
-  if (categoryFilter.value === value) return
-  categoryFilter.value = value
-  classification.ensureClassified(inbox.allCards)
-  void inbox.fillAfterHide(getScrollRoot(), passesDisplayFilters)
-}
-
-async function onSaveAiKey(apiKey: string): Promise<void> {
-  try {
-    await classification.saveApiKey(apiKey)
-    classification.ensureClassified(inbox.allCards)
-    showToast(apiKey.trim() ? "DeepSeek API Key 已保存到扩展本地存储" : "已移除 DeepSeek API Key")
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : "保存 DeepSeek API Key 失败", "error")
-  }
 }
 
 function cancelCardLeaving(card: VideoDynamicCard): void {
@@ -498,11 +428,14 @@ function cancelCardLeaving(card: VideoDynamicCard): void {
 watch(
   () => inbox.allCards.map((card) => `${card.dynamicId}:${card.title}`).join("\n"),
   () => {
-    classification.ensureClassified(inbox.allCards)
     decision.syncWantWatchCards(inbox.allCards)
     void decision.ensureFollowingStatuses(inbox.allCards)
   },
 )
+
+watch(() => props.hoverAutoplay, (value) => {
+  if (typeof value === "boolean") hoverAutoplay.value = value
+})
 
 function onViewModeUpdate(mode: ViewMode): void {
   viewMode.value = mode
@@ -551,12 +484,16 @@ function onClearAll(): void {
 }
 
 onMounted(() => {
+  if (!props.embedded) {
+    void fetchWatchLaterVideos()
+      .then((result) => decision.syncWatchLaterCards(result.cards))
+      .catch(() => undefined)
+  }
   const root = getScrollRoot()
   if (!root) {
     return
   }
 
-  void classification.bootstrap().then(() => classification.ensureClassified(inbox.allCards))
   void transcriber.refresh().catch(() => undefined)
   transcriberPollTimer = window.setInterval(() => {
     if (Object.values(transcriber.cards).some((item) => item.state === "transcribing")) {
@@ -584,6 +521,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  inbox.stopBackgroundWork()
   if (transcriberPollTimer) {
     window.clearInterval(transcriberPollTimer)
     transcriberPollTimer = 0

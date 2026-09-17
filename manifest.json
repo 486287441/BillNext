@@ -15,7 +15,7 @@
   ],
   "host_permissions": [
     "https://api.bilibili.com/*",
-    "https://api.deepseek.com/*",
+    "https://api.live.bilibili.com/*",
     "https://api.bgm.tv/*",
     "https://api.graphql.imdb.com/*",
     "https://v3.sg.media-imdb.com/*",
@@ -59,8 +59,7 @@
         "dist/content/style.css"
       ],
       "run_at": "document_start",
-      "match_about_blank": true,
-      "all_frames": true
+      "all_frames": false
     },
     {
       "matches": [
@@ -71,7 +70,7 @@
         "dist/inject/index.js"
       ],
       "run_at": "document_start",
-      "all_frames": true,
+      "all_frames": false,
       "world": "MAIN"
     }
   ]

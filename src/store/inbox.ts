@@ -38,6 +38,7 @@ interface InboxState {
   countingFinalCounts: boolean
   finalCountsReady: boolean
   countScanToken: number
+  backgroundWorkToken: number
   enterAnimatedIds: string[]
 }
 
@@ -62,6 +63,7 @@ export const useInboxStore = defineStore("inbox", {
     countingFinalCounts: false,
     finalCountsReady: false,
     countScanToken: 0,
+    backgroundWorkToken: 0,
     enterAnimatedIds: [],
   }),
   actions: {
@@ -173,9 +175,10 @@ export const useInboxStore = defineStore("inbox", {
       }
 
       this.prefetching = true
+      const workToken = this.backgroundWorkToken
       try {
         let loadedPages = 0
-        while (this.hasMore && loadedPages < MAX_BUFFER_PAGES) {
+        while (this.hasMore && loadedPages < MAX_BUFFER_PAGES && workToken === this.backgroundWorkToken) {
           if (this.hasScrollBuffer(scrollRoot)) {
             break
           }
@@ -200,9 +203,10 @@ export const useInboxStore = defineStore("inbox", {
       }
 
       this.prefetching = true
+      const workToken = this.backgroundWorkToken
       try {
         let loadedPages = 0
-        while (this.hasMore && loadedPages < maxPages) {
+        while (this.hasMore && loadedPages < maxPages && workToken === this.backgroundWorkToken) {
           if (!this.needsMoreVisible(scrollRoot, MIN_VISIBLE_CARDS, options?.predicate)) {
             break
           }
@@ -217,9 +221,18 @@ export const useInboxStore = defineStore("inbox", {
       }
     },
     async bootstrap(scrollRoot: HTMLElement | null = null, predicate?: CardPredicate): Promise<void> {
+      const workToken = this.backgroundWorkToken
       await this.load(true)
+      if (workToken !== this.backgroundWorkToken) return
       await this.ensureViewportFilled(scrollRoot, MAX_AUTOFILL_PAGES, { predicate })
+      if (workToken !== this.backgroundWorkToken) return
       await this.maintainScrollBuffer(scrollRoot)
+    },
+    stopBackgroundWork(): void {
+      this.backgroundWorkToken += 1
+      this.countScanToken += 1
+      this.countingFinalCounts = false
+      this.prefetching = false
     },
     async refresh(scrollRoot: HTMLElement | null = null, predicate?: CardPredicate): Promise<void> {
       await this.bootstrap(scrollRoot, predicate)

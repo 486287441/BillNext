@@ -2,6 +2,7 @@ import type { VideoDynamicCard } from "../domain/types"
 import type { AnimeTrackingItem, AnimeTrackingKind } from "../domain/anime-tracking"
 import type { ViewMode } from "../domain/view-mode"
 import { normalizePublishAfterDate } from "../domain/publish-date-filter"
+import { normalizeBlockedKeywords } from "../domain/title-keyword-filter"
 import type { BilibiliAvailabilityStatus, BilibiliCompleteness, ChecklistAvailability } from "../domain/checklist"
 
 const LEGACY_DISLIKED_KEY = "billnext:disliked-dynamic-ids"
@@ -20,12 +21,20 @@ export interface PersistedInboxState {
   upDislikeCounts: Record<string, number>
   homeMinDurationMinutes: string
   homePublishAfterDate: string
+  homeBlockedKeywords: string[]
   dynamicMinDurationMinutes: string
   dynamicPublishAfterDate: string
+  favoritesMinDurationMinutes: string
+  favoritesPublishAfterDate: string
+  historyMinDurationMinutes: string
+  historyPublishAfterDate: string
+  watchlaterMinDurationMinutes: string
+  watchlaterPublishAfterDate: string
   wantWatchDynamicIds: string[]
   wantWatchCards: VideoDynamicCard[]
   hideWantWatch: boolean
   openVideoOnWantWatch: boolean
+  hoverAutoplay: boolean
   sidebarCollapsed: boolean
   viewMode: ViewMode
   trackedAnime: AnimeTrackingItem[]
@@ -44,12 +53,20 @@ const EMPTY_STATE: PersistedInboxState = {
   upDislikeCounts: {},
   homeMinDurationMinutes: "",
   homePublishAfterDate: "",
+  homeBlockedKeywords: [],
   dynamicMinDurationMinutes: "",
   dynamicPublishAfterDate: "",
+  favoritesMinDurationMinutes: "",
+  favoritesPublishAfterDate: "",
+  historyMinDurationMinutes: "",
+  historyPublishAfterDate: "",
+  watchlaterMinDurationMinutes: "",
+  watchlaterPublishAfterDate: "",
   wantWatchDynamicIds: [],
   wantWatchCards: [],
   hideWantWatch: false,
   openVideoOnWantWatch: true,
+  hoverAutoplay: true,
   sidebarCollapsed: false,
   viewMode: "inbox",
   trackedAnime: [],
@@ -152,6 +169,7 @@ function normalizeCard(value: unknown): VideoDynamicCard | null {
     cover: typeof card.cover === "string" ? card.cover : "",
     durationText: typeof card.durationText === "string" ? card.durationText : "",
     durationSeconds: typeof card.durationSeconds === "number" ? Math.max(0, Math.floor(card.durationSeconds)) : 0,
+    watchedSeconds: typeof card.watchedSeconds === "number" ? Math.max(0, Math.floor(card.watchedSeconds)) : undefined,
     playCount: typeof card.playCount === "number" ? card.playCount : 0,
     danmakuCount: typeof card.danmakuCount === "number" ? card.danmakuCount : 0,
     upMid: card.upMid,
@@ -159,6 +177,8 @@ function normalizeCard(value: unknown): VideoDynamicCard | null {
     upAvatar: typeof card.upAvatar === "string" ? card.upAvatar : "",
     publishAt: card.publishAt,
     url: typeof card.url === "string" ? card.url : undefined,
+    recommendationGoto: typeof card.recommendationGoto === "string" ? card.recommendationGoto : undefined,
+    recommendationTrackId: typeof card.recommendationTrackId === "string" ? card.recommendationTrackId : undefined,
   }
 }
 
@@ -248,12 +268,20 @@ function normalizeState(value: unknown): PersistedInboxState {
     upDislikeCounts: normalizeUpCounts(state.upDislikeCounts),
     homeMinDurationMinutes: normalizeMinDurationMinutes(state.homeMinDurationMinutes) || legacyDuration,
     homePublishAfterDate: normalizePublishAfterDate(state.homePublishAfterDate) || legacyPublishAfter,
+    homeBlockedKeywords: normalizeBlockedKeywords(state.homeBlockedKeywords),
     dynamicMinDurationMinutes: normalizeMinDurationMinutes(state.dynamicMinDurationMinutes) || legacyDuration,
     dynamicPublishAfterDate: normalizePublishAfterDate(state.dynamicPublishAfterDate) || legacyPublishAfter,
+    favoritesMinDurationMinutes: normalizeMinDurationMinutes(state.favoritesMinDurationMinutes),
+    favoritesPublishAfterDate: normalizePublishAfterDate(state.favoritesPublishAfterDate),
+    historyMinDurationMinutes: normalizeMinDurationMinutes(state.historyMinDurationMinutes),
+    historyPublishAfterDate: normalizePublishAfterDate(state.historyPublishAfterDate),
+    watchlaterMinDurationMinutes: normalizeMinDurationMinutes(state.watchlaterMinDurationMinutes),
+    watchlaterPublishAfterDate: normalizePublishAfterDate(state.watchlaterPublishAfterDate),
     wantWatchDynamicIds: normalizeIdList(state.wantWatchDynamicIds),
     wantWatchCards: normalizeCards(state.wantWatchCards),
     hideWantWatch: state.hideWantWatch === true,
     openVideoOnWantWatch: state.openVideoOnWantWatch !== false,
+    hoverAutoplay: state.hoverAutoplay !== false,
     sidebarCollapsed: state.sidebarCollapsed === true,
     viewMode: "inbox",
     trackedAnime: normalizeTrackedAnime(state.trackedAnime),

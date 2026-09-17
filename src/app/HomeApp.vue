@@ -1,5 +1,5 @@
 <template>
-  <main ref="shellRef" class="inbox-shell home-shell" :class="{ 'detail-open': Boolean(selectedCard), 'sidebar-collapsed': sidebarCollapsed, 'checklist-active': !libraryKind && activeTab === 'checklist' }">
+  <main class="inbox-shell home-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'checklist-active': !libraryKind && activeTab === 'checklist', 'live-active': !libraryKind && activeTab === 'live' }">
     <AppNav
       :active="navActive"
       :trash-count="trash.count"
@@ -10,17 +10,30 @@
       @navigate-library="navigateLibrary"
       @navigate-tab="selectTab"
     />
+    <TopToolbar
+      v-if="libraryKind || activeTab !== 'following'"
+      ref="homeSettingsRef"
+      :hide-want-watch="hideWantWatch"
+      :open-video-on-want-watch="openVideoOnWantWatch"
+      :hover-autoplay="hoverAutoplay"
+      :sidebar-collapsed="sidebarCollapsed"
+      @toggle-hide-want-watch="toggleHomeHideWantWatch"
+      @toggle-open-video-on-want-watch="toggleHomeOpenVideoOnWantWatch"
+      @toggle-hover-autoplay="toggleHomeHoverAutoplay"
+      @toggle-sidebar-collapsed="toggleHomeSidebarCollapsed"
+    />
     <WorkspaceToolbar
-      v-if="libraryKind || activeTab !== 'checklist'"
-      :category="categoryFilter"
-      :scope="activeTab === 'following' ? 'dynamics' : 'home'"
+      v-if="libraryKind || (activeTab !== 'checklist' && activeTab !== 'live')"
+      :scope="toolbarScope"
       :search-only="!libraryKind && activeTab === 'tracking'"
-      :min-duration-minutes="activeTab === 'following' ? dynamicMinDurationMinutes : homeMinDurationMinutes"
-      :publish-after-date="activeTab === 'following' ? dynamicPublishAfterDate : homePublishAfterDate"
+      :min-duration-minutes="toolbarMinDurationMinutes"
+      :publish-after-date="toolbarPublishAfterDate"
+      :blocked-keywords="homeBlockedKeywords"
+      :keyword-filter-enabled="showHomeVideoFeed"
       :refreshing="toolbarRefreshing"
-      @update:category="setCategoryFilter"
       @update:min-duration-minutes="setScopedMinDuration"
       @update:publish-after-date="setScopedPublishAfter"
+      @update:blocked-keywords="setHomeBlockedKeywords"
       @update:search-query="setScopedSearchQuery"
       @refresh="refresh"
     />
@@ -34,9 +47,12 @@
       :loading="libraryLoading"
       :error="libraryError"
       :has-more="libraryHasMore"
+      :filter-active="libraryFilterActive"
+      :summary-cards="libraryKind === 'history' ? libraryStates.history.cards : libraryCards"
       :pending-map="libraryPendingMap"
       :want-watch-map="wantWatchMap"
       :open-video-on-want-watch="openVideoOnWantWatch"
+      :hover-autoplay="hoverAutoplay"
       :following-up-map="decision.followingUpMap"
       :relation-pending-mid="decision.relationPendingMid"
       :transcriber-state-map="libraryTranscriberStateMap"
@@ -53,13 +69,19 @@
     />
 
     <DynamicFeed
-      v-else
+      v-if="!libraryKind && activeTab === 'following'"
       ref="followingFeedRef"
       embedded
-      :feed-visible="activeTab === 'following'"
-      :selected-card-id="selectedCard?.dynamicId"
+      :hover-autoplay="hoverAutoplay"
       @settings-change="onSettingsChange"
-      @select-card="openSelectedCard"
+    />
+
+    <LiveFollowingView
+      v-if="!libraryKind && activeTab === 'live'"
+      :rooms="liveRooms"
+      :loading="liveLoading"
+      :error="liveError"
+      @refresh="loadLiveRooms"
     />
 
     <AnimeTrackingView
@@ -82,46 +104,63 @@
       @availability="setChecklistAvailability"
     />
 
-    <section v-if="!libraryKind && activeTab !== 'following' && activeTab !== 'tracking' && activeTab !== 'checklist' && error" class="inbox-error home-feed-error">
+    <section v-if="showHomeVideoFeed && error" class="inbox-error home-feed-error">
       <span>{{ error }}</span><button type="button" @click="loadMore">重试</button>
     </section>
 
-    <TransitionGroup v-else-if="!libraryKind && activeTab !== 'following' && activeTab !== 'tracking' && activeTab !== 'checklist'" class="home-video-grid" tag="section" name="home-card">
-      <VideoCard
-        v-for="card in visibleCards"
-        :key="card.dynamicId"
-        :card="card"
-        :pending-map="decision.pendingMap"
-        :want-watch-map="wantWatchMap"
-        :open-video-on-want-watch="openVideoOnWantWatch"
-        :following-up-map="decision.followingUpMap"
-        :relation-pending-mid="decision.relationPendingMid"
-        :transcriber-state="transcriber.getForCard(card)"
-        :selected="selectedCard?.dynamicId === card.dynamicId"
-        @want-watch="onWantWatch(card)"
-        @help-read="onHelpRead(card)"
-        @dislike="onDislike(card)"
-        @toggle-follow="onToggleFollow(card)"
-        @select="openSelectedCard(card)"
-      />
-    </TransitionGroup>
+    <section v-else-if="showHomeVideoFeed" class="home-showcase">
+      <TransitionGroup class="home-showcase-lead" tag="div" name="home-card">
+        <VideoCard
+          v-for="(card, index) in leadCards"
+          :key="card.dynamicId"
+          :card="card"
+          :pending-map="decision.pendingMap"
+          :want-watch-map="wantWatchMap"
+          :open-video-on-want-watch="openVideoOnWantWatch"
+          :hover-autoplay="hoverAutoplay"
+          :following-up-map="decision.followingUpMap"
+          :relation-pending-mid="decision.relationPendingMid"
+          :transcriber-state="transcriber.getForCard(card)"
+          :layout-variant="index === 0 ? 'featured' : 'compact'"
+          home-highlights
+          home-layout
+          @want-watch="onWantWatch(card)"
+          @help-read="onHelpRead(card)"
+          @dislike="onDislike(card)"
+        />
+      </TransitionGroup>
 
-    <div v-if="!libraryKind && activeTab !== 'following' && activeTab !== 'tracking' && activeTab !== 'checklist'" class="home-feed-sentinel">
+      <div v-if="moreCards.length" class="home-showcase-section-head">
+        <h2>更多推荐</h2>
+      </div>
+      <TransitionGroup v-if="moreCards.length" class="home-showcase-more" tag="div" name="home-card">
+        <VideoCard
+          v-for="card in moreCards"
+          :key="card.dynamicId"
+          :card="card"
+          :pending-map="decision.pendingMap"
+          :want-watch-map="wantWatchMap"
+          :open-video-on-want-watch="openVideoOnWantWatch"
+          :hover-autoplay="hoverAutoplay"
+          :following-up-map="decision.followingUpMap"
+          :relation-pending-mid="decision.relationPendingMid"
+          :transcriber-state="transcriber.getForCard(card)"
+          home-highlights
+          home-layout
+          layout-variant="standard"
+          @want-watch="onWantWatch(card)"
+          @help-read="onHelpRead(card)"
+          @dislike="onDislike(card)"
+        />
+      </TransitionGroup>
+    </section>
+
+    <div v-if="showHomeVideoFeed" class="home-feed-sentinel">
       <span v-if="loading">正在获取内容…</span>
       <span v-else-if="hasMore">继续下滑，自动加载更多</span>
       <span v-else-if="cards.length">已经到底了</span>
     </div>
 
-    <VideoDetailPanel
-      :card="selectedCard"
-      :transcriber-state="selectedCard ? transcriber.getForCard(selectedCard) : undefined"
-      :pending="Boolean(selectedCard && decision.pendingMap[selectedCard.dynamicId])"
-      :want-watched="Boolean(selectedCard && wantWatchMap[selectedCard.dynamicId])"
-      @close="closeSelectedCard"
-      @want-watch="selectedCard && onWantWatch(selectedCard)"
-      @help-read="selectedCard && onHelpRead(selectedCard)"
-      @dislike="selectedCard && onDetailDislike(selectedCard)"
-    />
     <TrashModal :open="trash.open" :items="trash.items" @close="trash.setOpen(false)" @restore="onRestore" @restore-all="onRestoreAll" @clear-all="onClearAll" />
   </main>
 </template>
@@ -130,18 +169,20 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from "vue"
 import DynamicFeed from "./App.vue"
 import AppNav from "../components/AppNav.vue"
+import TopToolbar from "../components/TopToolbar.vue"
 import type { HomeTabValue } from "../components/HomeTabsBar.vue"
 import WorkspaceToolbar from "../components/WorkspaceToolbar.vue"
-import VideoDetailPanel from "../components/VideoDetailPanel.vue"
 import AnimeTrackingView, { type AnimeEditorPayload } from "../components/AnimeTrackingView.vue"
 import ChecklistView from "../components/ChecklistView.vue"
+import LiveFollowingView from "../components/LiveFollowingView.vue"
 import LibraryView from "../components/LibraryView.vue"
 import TrashModal from "../components/TrashModal.vue"
 import VideoCard from "../components/VideoCard.vue"
-import type { FavoriteFolder, LibraryKind, VideoDynamicCard } from "../domain/types"
+import type { FavoriteFolder, LibraryKind, LiveRoomCard, VideoDynamicCard } from "../domain/types"
 import type { AnimeTrackingItem } from "../domain/anime-tracking"
-import { inferContentCategory, type ContentCategoryFilter } from "../domain/content-category"
 import { getPublishAfterTimestamp } from "../domain/publish-date-filter"
+import { isTitleBlocked, normalizeBlockedKeywords } from "../domain/title-keyword-filter"
+import { getVideoIdentity } from "../domain/video-identity"
 import {
   fetchFavoriteFolders,
   fetchFavoriteVideos,
@@ -150,6 +191,7 @@ import {
   fetchPopularVideosPage,
   fetchRankingVideos,
   fetchWatchLaterVideos,
+  fetchFollowingLiveRooms,
   addVideoToDefaultFavorite,
   removeVideoFromFavorite,
   removeVideoFromWatchLater,
@@ -157,7 +199,6 @@ import {
 import { editTrackedAnime, fetchAnimeByName, refreshTrackedAnime } from "../services/anime-tracking"
 import { readPersistedState, writePersistedState } from "../services/storage"
 import { showToast } from "../services/toast"
-import { animateGridReflow, captureCardRects } from "../utils/motion"
 import { useDecisionStore } from "../store/decision"
 import { useTranscriberStore } from "../store/transcriber"
 import { useTrashStore } from "../store/trash"
@@ -171,7 +212,7 @@ const requestedTab = new URL(window.location.href).searchParams.get("billnext")
 const libraryKind = ref<LibraryKind | null>(
   requestedTab === "favorites" || requestedTab === "history" || requestedTab === "watchlater" ? requestedTab : null,
 )
-const activeTab = ref<HomeTab>(requestedTab === "following" || requestedTab === "tracking" || requestedTab === "checklist" || requestedTab === "popular" || requestedTab === "ranking" ? requestedTab : "recommended")
+const activeTab = ref<HomeTab>(requestedTab === "following" || requestedTab === "live" || requestedTab === "tracking" || requestedTab === "checklist" || requestedTab === "popular" || requestedTab === "ranking" ? requestedTab : "recommended")
 const cards = ref<VideoDynamicCard[]>([])
 const query = ref("")
 const loading = ref(false)
@@ -180,27 +221,40 @@ const hasMore = ref(true)
 const pageIndex = ref(1)
 const homeMinDurationMinutes = ref(persisted.homeMinDurationMinutes)
 const homePublishAfterDate = ref(persisted.homePublishAfterDate)
+const homeBlockedKeywords = ref(persisted.homeBlockedKeywords)
 const dynamicMinDurationMinutes = ref(persisted.dynamicMinDurationMinutes)
 const dynamicPublishAfterDate = ref(persisted.dynamicPublishAfterDate)
+const libraryMinDurationMinutes = reactive<Record<LibraryKind, string>>({
+  favorites: persisted.favoritesMinDurationMinutes,
+  history: persisted.historyMinDurationMinutes,
+  watchlater: persisted.watchlaterMinDurationMinutes,
+})
+const libraryPublishAfterDate = reactive<Record<LibraryKind, string>>({
+  favorites: persisted.favoritesPublishAfterDate,
+  history: persisted.historyPublishAfterDate,
+  watchlater: persisted.watchlaterPublishAfterDate,
+})
+const librarySearchQueries = reactive<Record<LibraryKind, string>>({ favorites: "", history: "", watchlater: "" })
 const hideWantWatch = ref(persisted.hideWantWatch)
 const openVideoOnWantWatch = ref(persisted.openVideoOnWantWatch)
+const hoverAutoplay = ref(persisted.hoverAutoplay)
 const sidebarCollapsed = ref(persisted.sidebarCollapsed)
 const trackedAnime = ref<AnimeTrackingItem[]>(persisted.trackedAnime)
 const watchedChecklistIds = ref<string[]>(persisted.watchedChecklistIds)
 const checklistAvailability = ref(persisted.checklistAvailability)
 const trackingLoading = ref(false)
 const trackingError = ref("")
+const liveRooms = ref<LiveRoomCard[]>([])
+const liveLoading = ref(false)
+const liveError = ref("")
 const followingFeedRef = ref<{
   openSettings: () => void
   refreshFeed: () => void
-  setCategoryFilter: (value: ContentCategoryFilter) => void
   setMinDuration: (value: string) => void
   setPublishAfter: (value: string) => void
   setSearchQuery: (value: string) => void
 } | null>(null)
-const categoryFilter = ref<ContentCategoryFilter>("all")
-const selectedCard = ref<VideoDynamicCard | null>(null)
-const shellRef = ref<HTMLElement | null>(null)
+const homeSettingsRef = ref<{ openToolsPanel: () => void } | null>(null)
 const favoriteFolders = ref<FavoriteFolder[]>([])
 const activeFavoriteFolderId = ref(0)
 interface LibraryState {
@@ -223,6 +277,7 @@ const libraryStates = reactive<Record<LibraryKind, LibraryState>>({
   watchlater: createLibraryState(),
 })
 const libraryActionPending = reactive<Record<string, boolean>>({})
+const watchLaterLeadIds = ref<string[]>([])
 let transcriberPollTimer = 0
 let scrollRoot: HTMLElement | null = null
 let scrollFrame = 0
@@ -236,22 +291,50 @@ const visibleCards = computed(() => {
   const normalized = query.value.trim().toLocaleLowerCase()
   const minimumSeconds = Number(homeMinDurationMinutes.value) * 60
   return cards.value.filter((card) => {
-    if (decision.dislikedIds.has(card.dynamicId)) return false
-    if (hideWantWatch.value && decision.wantWatchIds.has(card.dynamicId)) return false
+    if (decision.isDisliked(card)) return false
+    if (isTitleBlocked(card.title, homeBlockedKeywords.value)) return false
+    if (hideWantWatch.value && decision.isWantWatch(card)) return false
     if (Number.isFinite(minimumSeconds) && minimumSeconds > 0 && card.durationSeconds < minimumSeconds) return false
     if (homePublishAfterDate.value && card.publishAt < publishAfterTimestamp.value) return false
-    if (categoryFilter.value !== "all" && inferContentCategory(card) !== categoryFilter.value) return false
     if (!normalized) return true
     return card.title.toLocaleLowerCase().includes(normalized) || card.upName.toLocaleLowerCase().includes(normalized)
   })
 })
-const wantWatchMap = computed(() => Object.fromEntries([...decision.wantWatchIds].map((id) => [id, true])))
-const navActive = computed(() => libraryKind.value ?? (activeTab.value === "following" ? "moments" : activeTab.value === "tracking" ? "tracking" : activeTab.value === "checklist" ? "checklist" : "home"))
+const wantWatchMap = computed(() => {
+  const map: Record<string, boolean> = {}
+  const candidates = [...cards.value, ...Object.values(libraryStates).flatMap((state) => state.cards)]
+  for (const card of candidates) {
+    if (decision.isWantWatch(card)) map[card.dynamicId] = true
+  }
+  return map
+})
+const navActive = computed(() => libraryKind.value ?? (activeTab.value === "following" ? "moments" : activeTab.value === "live" ? "live" : activeTab.value === "tracking" ? "tracking" : activeTab.value === "checklist" ? "checklist" : "home"))
+const showHomeVideoFeed = computed(() => !libraryKind.value && !["following", "live", "tracking", "checklist"].includes(activeTab.value))
+const toolbarScope = computed(() => libraryKind.value ?? (activeTab.value === "following" ? "dynamics" : "home"))
+const toolbarMinDurationMinutes = computed(() => libraryKind.value ? libraryMinDurationMinutes[libraryKind.value] : activeTab.value === "following" ? dynamicMinDurationMinutes.value : homeMinDurationMinutes.value)
+const toolbarPublishAfterDate = computed(() => libraryKind.value ? libraryPublishAfterDate[libraryKind.value] : activeTab.value === "following" ? dynamicPublishAfterDate.value : homePublishAfterDate.value)
 const activeLibraryState = computed(() => libraryKind.value ? libraryStates[libraryKind.value] : null)
-const libraryCards = computed(() => activeLibraryState.value?.cards ?? [])
+const libraryCards = computed(() => {
+  const items = activeLibraryState.value?.cards ?? []
+  const kind = libraryKind.value
+  if (!kind) return items
+  const normalized = librarySearchQueries[kind].trim().toLocaleLowerCase()
+  const minimumSeconds = Number(libraryMinDurationMinutes[kind]) * 60
+  const publishAfter = libraryPublishAfterDate[kind]
+  const publishAfterTimestamp = getPublishAfterTimestamp(publishAfter)
+  return items.filter((card) => {
+    if (Number.isFinite(minimumSeconds) && minimumSeconds > 0 && card.durationSeconds < minimumSeconds) return false
+    if (publishAfter && card.publishAt < publishAfterTimestamp) return false
+    return !normalized || card.title.toLocaleLowerCase().includes(normalized) || card.upName.toLocaleLowerCase().includes(normalized)
+  })
+})
 const libraryLoading = computed(() => activeLibraryState.value?.loading ?? false)
 const libraryError = computed(() => activeLibraryState.value?.error ?? "")
 const libraryHasMore = computed(() => activeLibraryState.value?.hasMore ?? false)
+const libraryFilterActive = computed(() => {
+  const kind = libraryKind.value
+  return Boolean(kind && (librarySearchQueries[kind] || libraryMinDurationMinutes[kind] || libraryPublishAfterDate[kind]))
+})
 const libraryTranscriberStateMap = computed(() => Object.fromEntries(
   libraryCards.value.map((card) => [card.dynamicId, transcriber.getForCard(card)]),
 ))
@@ -259,8 +342,55 @@ const libraryPendingMap = computed(() => ({ ...decision.pendingMap, ...libraryAc
 const toolbarRefreshing = computed(() => {
   if (libraryKind.value) return libraryLoading.value
   if (activeTab.value === "tracking") return trackingLoading.value
+  if (activeTab.value === "live") return liveLoading.value
   return loading.value
 })
+const watchLaterReady = computed(() => libraryStates.watchlater.loaded || Boolean(libraryStates.watchlater.error))
+const watchLaterLeadCards = computed(() => {
+  const cardById = new Map(libraryStates.watchlater.cards.map((card) => [card.dynamicId, card]))
+  return watchLaterLeadIds.value
+    .map((id) => cardById.get(id))
+    .filter((card): card is VideoDynamicCard => Boolean(card) && !decision.isDisliked(card) && !isTitleBlocked(card.title, homeBlockedKeywords.value))
+})
+const leadCards = computed(() => activeTab.value === "recommended"
+  ? watchLaterLeadCards.value
+  : visibleCards.value.slice(0, 4))
+const moreCards = computed(() => {
+  if (activeTab.value !== "recommended") return visibleCards.value.slice(4)
+  if (!watchLaterReady.value) return []
+  const leadIdentities = new Set(leadCards.value.map(getVideoIdentity))
+  return visibleCards.value.filter((card) => !leadIdentities.has(getVideoIdentity(card)))
+})
+
+function sampleWatchLaterLeadCards(): void {
+  const candidates = libraryStates.watchlater.cards.filter((card) => !decision.isDisliked(card) && !isTitleBlocked(card.title, homeBlockedKeywords.value))
+  for (let index = candidates.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const current = candidates[index]
+    candidates[index] = candidates[swapIndex]
+    candidates[swapIndex] = current
+  }
+  watchLaterLeadIds.value = candidates.slice(0, 4).map((card) => card.dynamicId)
+}
+
+function fillWatchLaterLeadCards(): void {
+  const candidates = libraryStates.watchlater.cards.filter((card) => !decision.isDisliked(card) && !isTitleBlocked(card.title, homeBlockedKeywords.value))
+  const candidateIds = new Set(candidates.map((card) => card.dynamicId))
+  const nextIds = watchLaterLeadIds.value.filter((id) => candidateIds.has(id))
+  const selectedIds = new Set(nextIds)
+  const replacements = candidates.filter((card) => !selectedIds.has(card.dynamicId))
+  for (let index = replacements.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const current = replacements[index]
+    replacements[index] = replacements[swapIndex]
+    replacements[swapIndex] = current
+  }
+  for (const card of replacements) {
+    if (nextIds.length >= 4) break
+    nextIds.push(card.dynamicId)
+  }
+  watchLaterLeadIds.value = nextIds
+}
 
 async function loadLibrary(reset: boolean, requestedKind: LibraryKind | null = libraryKind.value): Promise<void> {
   const kind = requestedKind
@@ -294,6 +424,7 @@ async function loadLibrary(reset: boolean, requestedKind: LibraryKind | null = l
       const result = await fetchWatchLaterVideos()
       state.cards = result.cards
       state.hasMore = false
+      decision.syncWatchLaterCards(result.cards)
     } else {
       const result = await fetchHistoryVideos(state.historyMax, state.historyViewAt, state.historyBusiness)
       if (reset) state.cards = result.cards
@@ -313,6 +444,7 @@ async function loadLibrary(reset: boolean, requestedKind: LibraryKind | null = l
     state.error = caught instanceof Error ? caught.message : "资料库加载失败"
   } finally {
     state.loading = false
+    if (kind === "history" && libraryKind.value === "history") scheduleAutoFill()
   }
 }
 
@@ -332,7 +464,7 @@ function navigateLibrary(kind: LibraryKind): void {
   url.searchParams.set("billnext", kind)
   window.history.pushState({ billnext: kind }, "", url.toString())
   scrollRoot?.scrollTo({ top: 0, behavior: "smooth" })
-  if (!libraryStates[kind].loaded) void loadLibrary(true, kind)
+  if (kind === "history" || !libraryStates[kind].loaded) void loadLibrary(true, kind)
 }
 
 function syncLibraryFromUrl(): void {
@@ -340,22 +472,16 @@ function syncLibraryFromUrl(): void {
   const kind = value === "favorites" || value === "history" || value === "watchlater" ? value : null
   libraryKind.value = kind
   if (kind) {
-    if (!libraryStates[kind].loaded) void loadLibrary(true, kind)
+    if (kind === "history" || !libraryStates[kind].loaded) void loadLibrary(true, kind)
     return
   }
-  const nextTab: HomeTab = value === "following" || value === "tracking" || value === "checklist" || value === "popular" || value === "ranking" ? value : "recommended"
+  const nextTab: HomeTab = value === "following" || value === "live" || value === "tracking" || value === "checklist" || value === "popular" || value === "ranking" ? value : "recommended"
   if (activeTab.value === nextTab) return
   activeTab.value = nextTab
-  selectedCard.value = null
   query.value = ""
   if (nextTab === "tracking") void refreshTrackedAnimeList()
+  else if (nextTab === "live") void loadLiveRooms()
   else if (nextTab !== "following" && nextTab !== "checklist" && !cards.value.length) void refresh()
-}
-
-function prefetchLibraries(): void {
-  for (const kind of ["favorites", "history", "watchlater"] as LibraryKind[]) {
-    if (!libraryStates[kind].loaded && !libraryStates[kind].loading) void loadLibrary(true, kind)
-  }
 }
 
 async function selectTab(tab: HomeTab): Promise<void> {
@@ -363,7 +489,6 @@ async function selectTab(tab: HomeTab): Promise<void> {
   if (leavingLibrary) {
     libraryKind.value = null
   }
-  selectedCard.value = null
   if (!leavingLibrary && activeTab.value === tab) {
     void refresh()
     return
@@ -375,6 +500,10 @@ async function selectTab(tab: HomeTab): Promise<void> {
   window.history.pushState({ billnext: tab }, "", tabUrl.toString())
   query.value = ""
   if (tab === "following") return
+  if (tab === "live") {
+    void loadLiveRooms()
+    return
+  }
   if (tab === "tracking") {
     void refreshTrackedAnimeList()
     return
@@ -396,7 +525,7 @@ async function loadMore(): Promise<void> {
   try {
     const page = await requestPage()
     const known = new Set(cards.value.map((card) => card.dynamicId))
-    const freshCards = page.cards.filter((card) => !known.has(card.dynamicId) && !decision.dislikedIds.has(card.dynamicId))
+    const freshCards = page.cards.filter((card) => !known.has(card.dynamicId) && !decision.isDisliked(card))
     cards.value.push(...freshCards)
     hasMore.value = page.hasMore
     decision.syncWantWatchCards(freshCards)
@@ -414,16 +543,31 @@ function isNearFeedEnd(): boolean {
   return scrollRoot.scrollHeight - scrollRoot.scrollTop - scrollRoot.clientHeight <= PREFETCH_DISTANCE_PX
 }
 
+function historyTodayBoundaryLoaded(): boolean {
+  const historyCards = libraryStates.history.cards
+  if (!historyCards.length) return false
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000
+  return historyCards[historyCards.length - 1].publishAt < todayStart
+}
+
 async function fillScrollBuffer(): Promise<void> {
-  if (autoFilling || activeTab.value === "following" || activeTab.value === "tracking" || activeTab.value === "checklist") return
+  const fillingHistory = libraryKind.value === "history"
+  if (autoFilling || (!showHomeVideoFeed.value && !fillingHistory)) return
   autoFilling = true
   try {
     let loadedPages = 0
-    while (hasMore.value && (visibleCards.value.length < 12 || isNearFeedEnd()) && loadedPages < MAX_AUTO_PAGES_PER_PASS) {
-      await loadMore()
+    const maxPages = MAX_AUTO_PAGES_PER_PASS
+    while ((fillingHistory ? libraryStates.history.hasMore : hasMore.value)
+      && (fillingHistory
+        ? !historyTodayBoundaryLoaded() || libraryCards.value.length < 12 || isNearFeedEnd()
+        : visibleCards.value.length < 12 || isNearFeedEnd())
+      && loadedPages < maxPages) {
+      if (fillingHistory) await loadLibrary(false, "history")
+      else await loadMore()
       loadedPages += 1
       await nextTick()
-      if (error.value) break
+      if (fillingHistory ? libraryStates.history.error : error.value) break
     }
   } finally {
     autoFilling = false
@@ -450,11 +594,20 @@ async function refresh(): Promise<void> {
     await refreshTrackedAnimeList()
     return
   }
+  if (activeTab.value === "live") {
+    await loadLiveRooms()
+    return
+  }
   if (activeTab.value === "checklist") return
   cards.value = []
   pageIndex.value = 1
   hasMore.value = true
-  await loadMore()
+  if (activeTab.value === "recommended") {
+    await Promise.all([loadLibrary(true, "watchlater"), loadMore()])
+    sampleWatchLaterLeadCards()
+  } else {
+    await loadMore()
+  }
 }
 
 function persistTrackedAnime(): void {
@@ -540,7 +693,48 @@ function removeTrackedAnime(item: AnimeTrackingItem): void {
 }
 
 function openSettings(): void {
-  followingFeedRef.value?.openSettings()
+  if (!libraryKind.value && activeTab.value === "following") {
+    followingFeedRef.value?.openSettings()
+    return
+  }
+  homeSettingsRef.value?.openToolsPanel()
+}
+
+function toggleHomeHideWantWatch(): void {
+  hideWantWatch.value = !hideWantWatch.value
+  writePersistedState({ hideWantWatch: hideWantWatch.value })
+  showToast(hideWantWatch.value ? "已隐藏标记为“想看”的视频" : "已显示标记为“想看”的视频")
+  scheduleAutoFill()
+}
+
+function toggleHomeOpenVideoOnWantWatch(): void {
+  openVideoOnWantWatch.value = !openVideoOnWantWatch.value
+  writePersistedState({ openVideoOnWantWatch: openVideoOnWantWatch.value })
+  showToast(openVideoOnWantWatch.value ? "点击“想看”时将打开视频" : "点击“想看”时不再打开视频")
+}
+
+function toggleHomeHoverAutoplay(): void {
+  hoverAutoplay.value = !hoverAutoplay.value
+  writePersistedState({ hoverAutoplay: hoverAutoplay.value })
+  showToast(hoverAutoplay.value ? "已开启悬停自动播放" : "已关闭悬停自动播放")
+}
+
+function toggleHomeSidebarCollapsed(): void {
+  setSidebarCollapsed(!sidebarCollapsed.value)
+  showToast(sidebarCollapsed.value ? "左侧导航已固定收起" : "左侧导航已固定展开")
+}
+
+async function loadLiveRooms(): Promise<void> {
+  if (liveLoading.value) return
+  liveLoading.value = true
+  liveError.value = ""
+  try {
+    liveRooms.value = await fetchFollowingLiveRooms()
+  } catch (caught) {
+    liveError.value = caught instanceof Error ? caught.message : "直播列表加载失败"
+  } finally {
+    liveLoading.value = false
+  }
 }
 
 function setWatchedChecklistIds(value: string[]): void {
@@ -551,37 +745,16 @@ function setChecklistAvailability(value: import("../domain/checklist").Checklist
   checklistAvailability.value = { ...checklistAvailability.value, [value.key]: value }
   writePersistedState({ checklistAvailability: checklistAvailability.value })
 }
-function transitionCardLayout(update: () => void): void {
-  const shell = shellRef.value
-  const before = shell ? captureCardRects(shell) : new Map<HTMLElement, DOMRect>()
-  shell?.classList.add("layout-flip-active")
-  update()
-  void nextTick(() => {
-    if (!shell) return
-    animateGridReflow(shell, before, () => shell.classList.remove("layout-flip-active"))
-  })
-}
-function openSelectedCard(card: VideoDynamicCard): void {
-  if (selectedCard.value?.dynamicId === card.dynamicId) return
-  transitionCardLayout(() => { selectedCard.value = card })
-}
-function closeSelectedCard(): void {
-  if (!selectedCard.value) return
-  transitionCardLayout(() => { selectedCard.value = null })
-}
-function setCategoryFilter(value: ContentCategoryFilter): void {
-  if (categoryFilter.value === value) return
-  if (activeTab.value === "following") {
-    categoryFilter.value = value
-    followingFeedRef.value?.setCategoryFilter(value)
-  } else {
-    categoryFilter.value = value
-  }
-  void nextTick(() => {
-    if (activeTab.value !== "following" && activeTab.value !== "tracking" && activeTab.value !== "checklist") scheduleAutoFill()
-  })
-}
 function setScopedMinDuration(value: string): void {
+  if (libraryKind.value) {
+    const kind = libraryKind.value
+    libraryMinDurationMinutes[kind] = value
+    if (kind === "favorites") writePersistedState({ favoritesMinDurationMinutes: value })
+    else if (kind === "history") writePersistedState({ historyMinDurationMinutes: value })
+    else writePersistedState({ watchlaterMinDurationMinutes: value })
+    scheduleAutoFill()
+    return
+  }
   if (activeTab.value === "following") {
     dynamicMinDurationMinutes.value = value
     followingFeedRef.value?.setMinDuration(value)
@@ -591,7 +764,22 @@ function setScopedMinDuration(value: string): void {
   writePersistedState({ homeMinDurationMinutes: value })
   scheduleAutoFill()
 }
+function setHomeBlockedKeywords(value: string[]): void {
+  homeBlockedKeywords.value = normalizeBlockedKeywords(value)
+  writePersistedState({ homeBlockedKeywords: homeBlockedKeywords.value })
+  fillWatchLaterLeadCards()
+  scheduleAutoFill()
+}
 function setScopedPublishAfter(value: string): void {
+  if (libraryKind.value) {
+    const kind = libraryKind.value
+    libraryPublishAfterDate[kind] = value
+    if (kind === "favorites") writePersistedState({ favoritesPublishAfterDate: value })
+    else if (kind === "history") writePersistedState({ historyPublishAfterDate: value })
+    else writePersistedState({ watchlaterPublishAfterDate: value })
+    scheduleAutoFill()
+    return
+  }
   if (activeTab.value === "following") {
     dynamicPublishAfterDate.value = value
     followingFeedRef.value?.setPublishAfter(value)
@@ -602,7 +790,10 @@ function setScopedPublishAfter(value: string): void {
   scheduleAutoFill()
 }
 function setScopedSearchQuery(value: string): void {
-  if (activeTab.value === "following") followingFeedRef.value?.setSearchQuery(value)
+  if (libraryKind.value) {
+    librarySearchQueries[libraryKind.value] = value
+    scheduleAutoFill()
+  } else if (activeTab.value === "following") followingFeedRef.value?.setSearchQuery(value)
 }
 function setSidebarCollapsed(value: boolean): void {
   if (sidebarCollapsed.value === value) return
@@ -612,16 +803,18 @@ function setSidebarCollapsed(value: boolean): void {
 function onSettingsChange(settings: {
   dynamicMinDurationMinutes: string
   dynamicPublishAfterDate: string
-  hideWantWatch: boolean
-  openVideoOnWantWatch: boolean
-  sidebarCollapsed: boolean
+    hideWantWatch: boolean
+    openVideoOnWantWatch: boolean
+    hoverAutoplay: boolean
+    sidebarCollapsed: boolean
 }): void {
   dynamicMinDurationMinutes.value = settings.dynamicMinDurationMinutes
   dynamicPublishAfterDate.value = settings.dynamicPublishAfterDate
   hideWantWatch.value = settings.hideWantWatch
   openVideoOnWantWatch.value = settings.openVideoOnWantWatch
+  hoverAutoplay.value = settings.hoverAutoplay
   if (sidebarCollapsed.value !== settings.sidebarCollapsed) setSidebarCollapsed(settings.sidebarCollapsed)
-  if (activeTab.value !== "following" && activeTab.value !== "tracking" && activeTab.value !== "checklist" && visibleCards.value.length < 12 && hasMore.value) {
+  if (showHomeVideoFeed.value && visibleCards.value.length < 12 && hasMore.value) {
     void loadMore()
   }
 }
@@ -647,21 +840,26 @@ function onRemoveLibraryFavorite(card: VideoDynamicCard): void {
   void runLibraryAction(card, () => removeVideoFromFavorite(card, mediaId), "已取消收藏", "favorites")
 }
 function onRemoveLibraryWatchLater(card: VideoDynamicCard): void {
-  void runLibraryAction(card, () => removeVideoFromWatchLater(card), "已移出稍后再看", "watchlater")
+  void runLibraryAction(card, async () => {
+    await removeVideoFromWatchLater(card)
+    decision.forgetWatchLater(card)
+  }, "已移出稍后再看", "watchlater")
 }
 function onHelpRead(card: VideoDynamicCard): void {
   transcriber.markTranscribing(card)
   window.setTimeout(() => void transcriber.refresh().catch(() => undefined), 1500)
 }
 async function onDislike(card: VideoDynamicCard): Promise<void> {
-  if (!(await decision.markDislike(card))) return
-  cards.value = cards.value.filter((item) => item.dynamicId !== card.dynamicId)
-  for (const state of Object.values(libraryStates)) state.cards = state.cards.filter((item) => item.dynamicId !== card.dynamicId)
+  const isWatchLaterCard = card.dynamicId.startsWith("watchlater:") || decision.isWantWatch(card)
+  const mode = !isWatchLaterCard && !libraryKind.value && activeTab.value === "recommended" && card.recommendationTrackId
+    ? "home-recommendation"
+    : "local"
+  if (!(await decision.markDislike(card, mode))) return
+  const identity = getVideoIdentity(card)
+  cards.value = cards.value.filter((item) => getVideoIdentity(item) !== identity)
+  for (const state of Object.values(libraryStates)) state.cards = state.cards.filter((item) => getVideoIdentity(item) !== identity)
+  if (isWatchLaterCard && !libraryKind.value && activeTab.value === "recommended") fillWatchLaterLeadCards()
   if (visibleCards.value.length < 12 && hasMore.value) void loadMore()
-}
-function onDetailDislike(card: VideoDynamicCard): void {
-  void onDislike(card)
-  closeSelectedCard()
 }
 async function onToggleFollow(card: VideoDynamicCard): Promise<void> {
   if (!card.upMid) return
@@ -690,8 +888,8 @@ onMounted(() => {
   window.addEventListener("popstate", syncLibraryFromUrl)
   if (libraryKind.value) void loadLibrary(true)
   else if (activeTab.value === "tracking") void refreshTrackedAnimeList()
-  else if (activeTab.value !== "checklist") void loadMore()
-  window.setTimeout(prefetchLibraries, 500)
+  else if (activeTab.value === "live") void loadLiveRooms()
+  else if (activeTab.value !== "checklist") void refresh()
 })
 onUnmounted(() => {
   scrollRoot?.removeEventListener("scroll", scheduleAutoFill)

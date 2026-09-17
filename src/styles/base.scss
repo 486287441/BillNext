@@ -247,62 +247,6 @@ body.billnext-inbox-page {
   position: relative;
 }
 
-.category-filter {
-  display: inline-flex;
-  flex-shrink: 0;
-  border: 1px solid #e6eaf0;
-  border-radius: 10px;
-  padding: 2px;
-  background: #f9fafb;
-}
-
-.category-filter-button {
-  border: 0;
-  border-radius: 8px;
-  padding: 6px 10px;
-  background: transparent;
-  color: #6b7280;
-  font-family: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.category-filter-button.is-active {
-  background: #fff;
-  color: #fb7299;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.ai-settings-wrap {
-  position: relative;
-}
-
-.ai-settings-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 30;
-  width: min(300px, calc(100vw - 24px));
-  box-sizing: border-box;
-  border: 1px solid #f0d7df;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
-}
-
-.ai-settings-note,
-.ai-settings-error {
-  margin: 7px 0 0;
-  color: #6b7280;
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.ai-settings-error {
-  color: #b91c1c;
-}
-
 .toolbar-search-input::placeholder {
   color: #9ca3af;
 }
@@ -486,6 +430,7 @@ body.billnext-inbox-page {
 
 .video-duration-badge {
   position: absolute;
+  z-index: 2;
   right: 6px;
   bottom: 6px;
   padding: 1px 6px;
@@ -547,6 +492,42 @@ body.billnext-inbox-page {
 
 .video-up:hover {
   color: #fb7299;
+}
+
+.video-hover-preview {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  object-fit: cover;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.video-hover-preview.ready {
+  opacity: 1;
+}
+
+.video-reason-badge {
+  flex: none;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #fff0f4;
+  color: #f04478;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.video-reason-badge.is-followed {
+  background: #fff3e8;
+  color: #f06b22;
 }
 
 .video-up-unfollow {

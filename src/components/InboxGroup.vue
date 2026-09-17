@@ -14,15 +14,14 @@
         :pending-map="pendingMap"
         :want-watch-map="wantWatchMap"
         :open-video-on-want-watch="openVideoOnWantWatch"
+        :hover-autoplay="hoverAutoplay"
         :following-up-map="followingUpMap"
         :relation-pending-mid="relationPendingMid"
         :transcriber-state="transcriberMap[item.dynamicId]"
-        :selected="selectedId === item.dynamicId"
         @want-watch="$emit('want-watch', item)"
         @help-read="$emit('help-read', item)"
         @dislike="$emit('dislike', item)"
         @toggle-follow="$emit('toggle-follow', item)"
-        @select="$emit('select-card', item)"
       />
     </TransitionGroup>
   </article>
@@ -48,13 +47,13 @@ const props = defineProps<{
   pendingMap: Record<string, boolean>
   wantWatchMap: Record<string, boolean>
   openVideoOnWantWatch: boolean
+  hoverAutoplay: boolean
   followingUpMap: Record<string, boolean>
   relationPendingMid: string
   finalCountMap: Record<string, number>
   leaveReasonMap: Record<string, CardLeaveVariant>
   enterCardIds: string[]
   transcriberMap: Record<string, TranscriberCardState | undefined>
-  selectedId?: string
 }>()
 
 const emit = defineEmits<{
@@ -62,7 +61,6 @@ const emit = defineEmits<{
   (event: "dislike", card: VideoDynamicCard): void
   (event: "toggle-follow", card: VideoDynamicCard): void
   (event: "help-read", card: VideoDynamicCard): void
-  (event: "select-card", card: VideoDynamicCard): void
   (event: "leave-complete", payload: { dynamicId: string; groupKey: string }): void
   (event: "enter-complete", dynamicId: string): void
 }>()

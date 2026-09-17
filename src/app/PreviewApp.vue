@@ -1,12 +1,12 @@
 <template>
-  <main ref="shellRef" class="inbox-shell home-shell" :class="{ 'detail-open': previewTab !== 'checklist' && selectedCard, 'sidebar-collapsed': sidebarCollapsed }">
-    <AppNav :active="previewTab === 'checklist' ? 'checklist' : 'moments'" :trash-count="0" :collapsed="sidebarCollapsed" @update:collapsed="updateSidebar" @navigate-tab="previewTab = $event" @navigate-library="() => undefined" @open-tools="showPreviewToast('筛选设置已打开')" />
-    <WorkspaceToolbar v-if="previewTab !== 'checklist'" :category="category" scope="dynamics" min-duration-minutes="" publish-after-date="" @update:category="updateCategory" />
+  <main class="inbox-shell home-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <AppNav :active="previewTab === 'checklist' ? 'checklist' : previewTab === 'recommended' ? 'home' : 'moments'" :trash-count="0" :collapsed="sidebarCollapsed" @update:collapsed="updateSidebar" @navigate-tab="previewTab = $event" @navigate-library="() => undefined" @open-tools="showPreviewToast('筛选设置已打开')" />
+    <WorkspaceToolbar v-if="previewTab !== 'checklist'" :scope="previewTab === 'recommended' ? 'home' : 'dynamics'" min-duration-minutes="" publish-after-date="" :keyword-filter-enabled="previewTab === 'recommended'" :blocked-keywords="homeBlockedKeywords" @update:blocked-keywords="setBlockedKeywords" />
 
     <ChecklistView v-if="previewTab === 'checklist'" :watched-ids="watchedChecklistIds" :availability-map="{}" @update:watched-ids="watchedChecklistIds = $event" />
 
-    <section v-else class="inbox-content">
-      <article class="group-block">
+    <section v-else class="inbox-content" :class="{ 'home-showcase-preview': previewTab === 'recommended', 'dynamic-inbox-content': previewTab !== 'recommended' }">
+      <article v-if="previewTab !== 'recommended'" class="group-block">
         <h2><span>今天</span><small>40</small></h2>
         <div class="group-list">
           <VideoCard
@@ -18,8 +18,7 @@
             :open-video-on-want-watch="false"
             :following-up-map="followingMap"
             relation-pending-mid=""
-            :selected="selectedCard?.dynamicId === card.dynamicId"
-            @select="openCard(card)"
+            :home-highlights="previewTab === 'recommended'"
             @want-watch="markWant(card)"
             @help-read="startReading(card)"
             @dislike="hideCard(card)"
@@ -27,33 +26,59 @@
           />
         </div>
       </article>
+      <section v-else class="home-showcase">
+        <div class="home-showcase-lead">
+          <VideoCard
+            v-for="(card, index) in visibleCards.slice(0, 4)"
+            :key="card.dynamicId"
+            :card="card"
+            :pending-map="{}"
+            :want-watch-map="wantWatchMap"
+            :open-video-on-want-watch="false"
+            :following-up-map="followingMap"
+            relation-pending-mid=""
+            :layout-variant="index === 0 ? 'featured' : 'compact'"
+            home-highlights
+            home-layout
+            @want-watch="markWant(card)"
+            @help-read="startReading(card)"
+            @dislike="hideCard(card)"
+          />
+        </div>
+        <div class="home-showcase-section-head"><h2>更多推荐</h2></div>
+        <div class="home-showcase-more">
+          <VideoCard
+            v-for="card in visibleCards.slice(4)"
+            :key="card.dynamicId"
+            :card="card"
+            :pending-map="{}"
+            :want-watch-map="wantWatchMap"
+            :open-video-on-want-watch="false"
+            :following-up-map="followingMap"
+            relation-pending-mid=""
+            home-highlights
+            home-layout
+            @want-watch="markWant(card)"
+            @help-read="startReading(card)"
+            @dislike="hideCard(card)"
+          />
+        </div>
+      </section>
     </section>
 
-    <VideoDetailPanel
-      v-if="previewTab !== 'checklist'"
-      :card="selectedCard"
-      :transcriber-state="selectedCard?.dynamicId === readingId ? previewTranscriberState : undefined"
-      :pending="false"
-      :want-watched="Boolean(selectedCard && wantWatchMap[selectedCard.dynamicId])"
-      @close="closeCard"
-      @want-watch="selectedCard && markWant(selectedCard)"
-      @help-read="selectedCard && startReading(selectedCard)"
-      @dislike="selectedCard && hideCard(selectedCard)"
-    />
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue"
+import { computed, ref } from "vue"
 import AppNav from "../components/AppNav.vue"
 import ChecklistView from "../components/ChecklistView.vue"
 import VideoCard from "../components/VideoCard.vue"
-import VideoDetailPanel from "../components/VideoDetailPanel.vue"
 import WorkspaceToolbar from "../components/WorkspaceToolbar.vue"
-import type { ContentCategoryFilter } from "../domain/content-category"
 import type { VideoDynamicCard } from "../domain/types"
 import { showToast } from "../services/toast"
-import { animateGridReflow, captureCardRects } from "../utils/motion"
+import { isTitleBlocked, normalizeBlockedKeywords } from "../domain/title-keyword-filter"
+import { readPersistedState, writePersistedState } from "../services/storage"
 
 const imageUrls = [
   "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=640&h=360&q=84",
@@ -98,6 +123,7 @@ const cards = ref<VideoDynamicCard[]>(titles.map((title, index) => ({
   durationText: ["03:44", "19:04", "23:40", "06:20", "33:29"][index % 5],
   durationSeconds: 224 + index * 83,
   playCount: 13000 + index * 12700,
+  likeCount: 2000 + index * 5000,
   danmakuCount: 7 + index * 31,
   upMid: String(9000 + index),
   upName: ["艺术家阿克曼", "小Lin说", "哔哩哔哩番剧", "通俗解馋", "迷案追踪"][index % 5],
@@ -106,48 +132,31 @@ const cards = ref<VideoDynamicCard[]>(titles.map((title, index) => ({
   tag: ["娱乐", "知识", "娱乐", "知识", "知识"][index % 5],
 })))
 
-const category = ref<ContentCategoryFilter>("all")
-const previewTab = ref(new URL(window.location.href).searchParams.get("screen") === "checklist" ? "checklist" : "following")
+const previewScreen = new URL(window.location.href).searchParams.get("screen")
+const previewTab = ref(previewScreen === "checklist" ? "checklist" : previewScreen === "home" ? "recommended" : "following")
 const watchedChecklistIds = ref<string[]>(["imdb:tt0111161", "imdb:tt0068646"])
 const sidebarCollapsed = ref(false)
-const shellRef = ref<HTMLElement | null>(null)
-const selectedCard = ref<VideoDynamicCard | null>(cards.value[1])
 const wantWatchMap = ref<Record<string, boolean>>({})
-const followingMap = Object.fromEntries(cards.value.map((card) => [card.upMid, true]))
-const readingId = ref("")
-const previewTranscriberState = computed(() => ({
-  state: "transcribing" as const,
-  updatedAt: Date.now(),
-}))
-const visibleCards = computed(() => cards.value.filter((card) => {
-  if (category.value === "all") return true
-  return category.value === "work" ? card.tag === "知识" : card.tag === "娱乐"
-}))
-function transitionCardLayout(update: () => void): void {
-  const shell = shellRef.value
-  const before = shell ? captureCardRects(shell) : new Map<HTMLElement, DOMRect>()
-  update()
-  void nextTick(() => {
-    if (shell) animateGridReflow(shell, before)
-  })
+const followingMap = Object.fromEntries(cards.value.map((card, index) => [card.upMid, index % 3 === 0]))
+const homeBlockedKeywords = ref(readPersistedState().homeBlockedKeywords)
+const visibleCards = computed(() => previewTab.value === "recommended"
+  ? cards.value.filter((card) => !isTitleBlocked(card.title, homeBlockedKeywords.value))
+  : cards.value)
+function setBlockedKeywords(value: string[]): void {
+  homeBlockedKeywords.value = normalizeBlockedKeywords(value)
+  writePersistedState({ homeBlockedKeywords: homeBlockedKeywords.value })
 }
-function openCard(card: VideoDynamicCard): void { transitionCardLayout(() => { selectedCard.value = card }) }
-function closeCard(): void { transitionCardLayout(() => { selectedCard.value = null }) }
-function updateCategory(value: ContentCategoryFilter): void { category.value = value }
 function updateSidebar(value: boolean): void { sidebarCollapsed.value = value }
 function showPreviewToast(message: string): void { showToast(message) }
 function markWant(card: VideoDynamicCard): void {
   wantWatchMap.value = { ...wantWatchMap.value, [card.dynamicId]: true }
   showToast("已标记为“想看”")
 }
-function startReading(card: VideoDynamicCard): void {
-  readingId.value = card.dynamicId
-  selectedCard.value = card
+function startReading(): void {
   showToast("已开始生成帮读摘要")
 }
 function hideCard(card: VideoDynamicCard): void {
   cards.value = cards.value.filter((item) => item.dynamicId !== card.dynamicId)
-  if (selectedCard.value?.dynamicId === card.dynamicId) selectedCard.value = null
   showToast("已移入不想看")
 }
 </script>

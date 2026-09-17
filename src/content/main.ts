@@ -12,6 +12,7 @@ const HISTORY_EVENT_NAME = "billnext-history-change"
 let lastUrl = window.location.href
 let observerStarted = false
 let bootstrapPending = false
+let bodyObserver: MutationObserver | null = null
 
 function scheduleBootstrap(): void {
   window.setTimeout(() => {
@@ -62,7 +63,7 @@ function startUrlObserver(): void {
   }
 
   observerStarted = true
-  const observer = new MutationObserver(() => {
+  const checkAppContainer = (): void => {
     if (window.location.href !== lastUrl) {
       lastUrl = window.location.href
       scheduleBootstrap()
@@ -77,44 +78,50 @@ function startUrlObserver(): void {
     if (!(container instanceof HTMLElement) || !isContainerMounted(container)) {
       scheduleBootstrap()
     }
+  }
+
+  const observeBody = (): void => {
+    bodyObserver?.disconnect()
+    if (!document.body) return
+    bodyObserver = new MutationObserver(checkAppContainer)
+    bodyObserver.observe(document.body, { childList: true })
+  }
+
+  const documentObserver = new MutationObserver(() => {
+    observeBody()
+    checkAppContainer()
   })
 
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  })
+  documentObserver.observe(document.documentElement, { childList: true })
+  if (document.body) observeBody()
+  else document.addEventListener("DOMContentLoaded", observeBody, { once: true })
 }
 
-window.addEventListener(HISTORY_EVENT_NAME, () => {
-  if (window.location.href !== lastUrl) {
-    lastUrl = window.location.href
-  }
-  scheduleBootstrap()
-})
-
-window.addEventListener("popstate", () => {
-  lastUrl = window.location.href
-  scheduleBootstrap()
-})
-
-window.addEventListener("hashchange", () => {
-  lastUrl = window.location.href
-  scheduleBootstrap()
-})
-
-window.addEventListener("pageshow", () => {
-  scheduleBootstrap()
-})
-
-window.setInterval(() => {
-  if (!isTargetPage()) {
-    return
-  }
-  const container = document.getElementById("billnext-inbox-root")
-  if (!(container instanceof HTMLElement) || !isContainerMounted(container)) {
+function startRuntime(): void {
+  window.addEventListener(HISTORY_EVENT_NAME, () => {
+    if (window.location.href !== lastUrl) lastUrl = window.location.href
     scheduleBootstrap()
-  }
-}, 1500)
+  })
+  window.addEventListener("popstate", () => {
+    lastUrl = window.location.href
+    scheduleBootstrap()
+  })
+  window.addEventListener("hashchange", () => {
+    lastUrl = window.location.href
+    scheduleBootstrap()
+  })
+  window.addEventListener("pageshow", scheduleBootstrap)
 
-scheduleBootstrap()
-startUrlObserver()
+  window.setInterval(() => {
+    if (!isTargetPage()) return
+    const container = document.getElementById("billnext-inbox-root")
+    if (!(container instanceof HTMLElement) || !isContainerMounted(container)) scheduleBootstrap()
+  }, 1500)
+
+  scheduleBootstrap()
+  startUrlObserver()
+}
+
+// The replacement UI belongs to the top-level Bilibili page. Mounting it in
+// embedded/about:blank frames duplicates observers, stores, requests and timers.
+if (window.top === window) startRuntime()

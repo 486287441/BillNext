@@ -19,14 +19,14 @@ function injectFunction(origin, keys, callback) {
   })
 }
 
-if (!window.__bewlyHistoryInjected) {
+if (window.top === window && !window.__bewlyHistoryInjected) {
   injectFunction(window.history, ["pushState", "replaceState", "forward", "back"], () => {
     window.dispatchEvent(new CustomEvent(HISTORY_EVENT_NAME))
   })
   window.__bewlyHistoryInjected = true
 }
 
-if (!window.__bewlyFetchBridgeInjected) {
+if (window.top === window && !window.__bewlyFetchBridgeInjected) {
   document.addEventListener(FETCH_REQUEST_EVENT, (event) => {
     const detail = event.detail
     if (!detail || typeof detail.id !== "number" || typeof detail.url !== "string") {

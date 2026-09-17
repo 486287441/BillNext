@@ -4,6 +4,8 @@ import { invalidateWbiKeys, signWbiParams } from "./wbi-sign"
 const SEARCH_ENDPOINT = "https://api.bilibili.com/x/web-interface/wbi/search/type"
 const MIN_PLAY_COUNT = 50_000
 const SEARCH_ORDERS = ["totalrank", "click", "dm"] as const
+const PRIMARY_SEARCH_ATTEMPTS = 2
+const PRIMARY_RETRY_DELAY_MS = 250
 
 interface BilibiliSearchVideo {
   aid?: number
@@ -154,15 +156,57 @@ async function searchPage(keyword: string, order: typeof SEARCH_ORDERS[number], 
   return Array.isArray(payload.data?.result) ? payload.data.result : []
 }
 
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+async function searchPageReliably(
+  keyword: string,
+  order: typeof SEARCH_ORDERS[number] = "totalrank",
+): Promise<BilibiliSearchVideo[]> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < PRIMARY_SEARCH_ATTEMPTS; attempt += 1) {
+    try {
+      return await searchPage(keyword, order)
+    } catch (caught) {
+      lastError = caught
+      if (attempt + 1 < PRIMARY_SEARCH_ATTEMPTS) await delay(PRIMARY_RETRY_DELAY_MS)
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("B 站综合排序请求失败")
+}
+
 export async function findBestAnimeWatchLink(title: string): Promise<AnimeWatchMatch> {
   const keyword = title.trim()
   if (!keyword) throw new Error("请先填写番剧名称")
-  const pages = await Promise.allSettled(SEARCH_ORDERS.map((order) => searchPage(keyword, order)))
-  const videos = pages.flatMap((result) => result.status === "fulfilled" ? result.value : [])
-  if (!videos.length) {
-    const failure = pages.find((result): result is PromiseRejectedResult => result.status === "rejected")
-    throw failure?.reason instanceof Error ? failure.reason : new Error("没有获取到 B 站搜索结果")
+  let primaryVideos: BilibiliSearchVideo[]
+  try {
+    primaryVideos = await searchPageReliably(keyword)
+  } catch (caught) {
+    const reason = caught instanceof Error ? `：${caught.message}` : ""
+    throw new Error(`B 站综合排序暂时不可用，请稍后重试${reason}`)
   }
+
+  // 裸番名容易被热门短视频污染；追加“合集”意图词，让 B 站召回真正的正片/全集。
+  let collectionVideos: BilibiliSearchVideo[] = []
+  try {
+    collectionVideos = await searchPageReliably(`${keyword} 合集`)
+  } catch {
+    // 定向搜索只是增强项，失败时仍使用原始三路视频搜索结果。
+  }
+
+  // 综合排序是候选基准；其余两路只做补充，并按顺序请求以避免触发并发风控。
+  const supplementalVideos: BilibiliSearchVideo[] = []
+  for (const order of SEARCH_ORDERS.slice(1)) {
+    try {
+      supplementalVideos.push(...await searchPage(keyword, order))
+    } catch {
+      // 补充排序失败不影响已经完整拿到的综合排序候选。
+    }
+  }
+  // 定向结果优先去重，避免同一 BV 在裸关键词结果中携带残缺元数据。
+  const videos = [...collectionVideos, ...primaryVideos, ...supplementalVideos]
+  if (!videos.length) throw new Error("没有获取到 B 站搜索结果")
 
   const seen = new Set<string>()
   const candidates = videos

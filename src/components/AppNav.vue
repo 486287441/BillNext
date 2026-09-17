@@ -66,7 +66,7 @@ import { fetchLoggedInUser } from "../services/bilibili-api"
 import type { LibraryKind } from "../domain/types"
 import type { HomeTabValue } from "./HomeTabsBar.vue"
 
-type NavActive = "home" | "moments" | "tracking" | "checklist" | "favorites" | "history" | "watchlater"
+type NavActive = "home" | "moments" | "live" | "tracking" | "checklist" | "favorites" | "history" | "watchlater"
 const props = withDefaults(defineProps<{ active: NavActive; trashCount: number; collapsed?: boolean }>(), {
   collapsed: false,
 })
@@ -93,6 +93,7 @@ function toggleCollapsed(): void {
 const primaryItems = computed(() => [
   { label: "首页", icon: "mingcute:home-5-line", activeIcon: "mingcute:home-5-fill", href: "https://www.bilibili.com/", active: props.active === "home", tab: "recommended" as HomeTabValue },
   { label: "动态", icon: "tabler:windmill", activeIcon: "tabler:windmill-filled", href: "https://www.bilibili.com/?billnext=following", active: props.active === "moments", tab: "following" as HomeTabValue },
+  { label: "直播", icon: "mingcute:live-line", activeIcon: "mingcute:live-fill", href: "https://www.bilibili.com/?billnext=live", active: props.active === "live", tab: "live" as HomeTabValue },
   { label: "追番", icon: "mingcute:tv-2-line", activeIcon: "mingcute:tv-2-fill", href: "https://www.bilibili.com/?billnext=tracking", active: props.active === "tracking", tab: "tracking" as HomeTabValue },
   { label: "清单", icon: "mingcute:list-check-3-line", activeIcon: "mingcute:list-check-3-fill", href: "https://www.bilibili.com/?billnext=checklist", active: props.active === "checklist", tab: "checklist" as HomeTabValue },
 ])

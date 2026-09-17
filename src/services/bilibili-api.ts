@@ -1,4 +1,4 @@
-import type { DynamicItem, FavoriteFolder, LibraryPageResult, VideoDynamicCard } from "../domain/types"
+import type { DynamicItem, FavoriteFolder, LibraryPageResult, LiveRoomCard, VideoDynamicCard } from "../domain/types"
 import type { UpFollowSort } from "../domain/up-filter-types"
 import type { SpaceArchiveInput } from "../domain/up-video-bundle"
 import { invalidateWbiKeys, signWbiParams } from "./wbi-sign"
@@ -19,6 +19,55 @@ export interface MomentsPageResult {
   items: DynamicItem[]
   nextOffset: string
   hasMore: boolean
+}
+
+function normalizeBilibiliImage(value: unknown): string {
+  const url = typeof value === "string" ? value.trim() : ""
+  if (!url) return ""
+  return url.startsWith("//") ? `https:${url}` : url
+}
+
+/** Returns every followed creator who is currently live for the signed-in account. */
+export async function fetchFollowingLiveRooms(): Promise<LiveRoomCard[]> {
+  const url = new URL("https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/GetWebList")
+  url.searchParams.set("page", "1")
+  url.searchParams.set("page_size", "100")
+
+  const response = await fetch(url.toString(), { credentials: "include" })
+  if (!response.ok) throw new Error(`获取直播列表失败: ${response.status}`)
+
+  const payload = (await response.json()) as {
+    code?: number
+    message?: string
+    data?: { rooms?: Array<Record<string, unknown>> }
+  }
+  if (payload.code === -101) {
+    openBilibiliLogin()
+    throw new Error("请先登录 B 站账号")
+  }
+  if (typeof payload.code === "number" && payload.code !== 0) {
+    throw new Error(payload.message || `直播接口错误: ${payload.code}`)
+  }
+
+  const rooms = Array.isArray(payload.data?.rooms) ? payload.data.rooms : []
+  return rooms.flatMap((room): LiveRoomCard[] => {
+    const roomId = String(room.roomid ?? room.room_id ?? "")
+    if (!roomId) return []
+    const link = typeof room.link === "string" ? room.link : ""
+    return [{
+      roomId,
+      upMid: String(room.uid ?? room.mid ?? ""),
+      upName: String(room.uname ?? room.name ?? "正在直播的 UP 主"),
+      upAvatar: normalizeBilibiliImage(room.face ?? room.avatar),
+      title: String(room.title ?? "正在直播"),
+      cover: [room.cover_from_user, room.user_cover, room.system_cover, room.cover, room.keyframe]
+        .map(normalizeBilibiliImage)
+        .find(Boolean) || "",
+      areaName: String(room.area_name ?? room.parent_name ?? "直播"),
+      online: Number(room.online ?? room.watched_show_num ?? 0) || 0,
+      url: link.startsWith("//") ? `https:${link}` : link.startsWith("http") ? link : `https://live.bilibili.com/${roomId}`,
+    }]
+  }).sort((a, b) => b.online - a.online)
 }
 
 function openBilibiliLogin(): void {
@@ -470,6 +519,7 @@ function libraryCard(input: {
   title?: string
   cover?: string
   duration?: number
+  watchedSeconds?: number
   play?: number
   danmaku?: number
   upMid?: number | string
@@ -482,6 +532,12 @@ function libraryCard(input: {
   const aid = String(input.aid ?? "")
   const bvid = input.bvid ?? ""
   const duration = Number(input.duration ?? 0)
+  const rawWatchedSeconds = input.watchedSeconds
+  const watchedSeconds = rawWatchedSeconds === undefined
+    ? undefined
+    : rawWatchedSeconds < 0
+      ? duration
+      : Math.min(Number(rawWatchedSeconds) || 0, duration > 0 ? duration : Number(rawWatchedSeconds) || 0)
   return {
     dynamicId: `${input.keyPrefix}:${bvid || aid}`,
     videoAid: aid,
@@ -490,6 +546,7 @@ function libraryCard(input: {
     cover: input.cover || "",
     durationText: formatDurationText(duration),
     durationSeconds: duration,
+    watchedSeconds,
     playCount: Number(input.play ?? 0),
     danmakuCount: Number(input.danmaku ?? 0),
     upMid: String(input.upMid ?? ""),
@@ -663,6 +720,7 @@ export async function fetchHistoryVideos(max = 0, viewAt = 0, business = ""): Pr
         author_mid?: number
         author_face?: string
         duration?: number
+        progress?: number
         view_at?: number
         uri?: string
         stat?: { view?: number; danmaku?: number }
@@ -678,6 +736,7 @@ export async function fetchHistoryVideos(max = 0, viewAt = 0, business = ""): Pr
     title: item.title,
     cover: item.cover,
     duration: item.duration,
+    watchedSeconds: item.progress,
     upMid: item.author_mid,
     upName: item.author_name,
     upAvatar: item.author_face,
@@ -815,10 +874,10 @@ export async function submitOfficialDislike(card: VideoDynamicCard): Promise<voi
   body.set("platform", "5")
   body.set("from_spmid", "")
   body.set("spmid", "333.1007.0.0")
-  body.set("goto", "av")
+  body.set("goto", card.recommendationGoto || "av")
   body.set("id", String(aid))
   body.set("mid", card.upMid || "0")
-  body.set("track_id", "")
+  body.set("track_id", card.recommendationTrackId || "")
   body.set("feedback_page", "1")
   body.set("reason_id", "1")
 
@@ -851,8 +910,10 @@ interface HomeArchiveRow {
   duration?: number
   pubdate?: number
   owner?: { mid?: number | string; name?: string; face?: string }
-  stat?: { view?: number; danmaku?: number }
+  stat?: { view?: number; like?: number; danmaku?: number }
   rcmd_reason?: { content?: string }
+  goto?: string
+  track_id?: string
 }
 
 function mapHomeArchive(item: HomeArchiveRow, source: string, rank?: number): VideoDynamicCard | null {
@@ -870,6 +931,7 @@ function mapHomeArchive(item: HomeArchiveRow, source: string, rank?: number): Vi
     durationText: formatVideoDuration(durationSeconds),
     durationSeconds,
     playCount: Number.isFinite(item.stat?.view) ? Math.max(0, Math.floor(item.stat?.view ?? 0)) : 0,
+    likeCount: Number.isFinite(item.stat?.like) ? Math.max(0, Math.floor(item.stat?.like ?? 0)) : 0,
     danmakuCount: Number.isFinite(item.stat?.danmaku) ? Math.max(0, Math.floor(item.stat?.danmaku ?? 0)) : 0,
     upMid: item.owner?.mid === undefined ? "" : String(item.owner.mid),
     upName: typeof item.owner?.name === "string" ? item.owner.name : "未知 UP",
@@ -877,6 +939,8 @@ function mapHomeArchive(item: HomeArchiveRow, source: string, rank?: number): Vi
     publishAt: Number.isFinite(item.pubdate) ? Math.floor(item.pubdate ?? Date.now() / 1000) : Math.floor(Date.now() / 1000),
     rank,
     tag: typeof item.rcmd_reason?.content === "string" ? item.rcmd_reason.content : "",
+    recommendationGoto: typeof item.goto === "string" ? item.goto : undefined,
+    recommendationTrackId: typeof item.track_id === "string" ? item.track_id : undefined,
   }
 }
 
@@ -943,7 +1007,9 @@ export async function fetchHomeFeedPage(freshIndex: number, pageSize = 30): Prom
         duration?: number
         pubdate?: number
         owner?: { mid?: number | string; name?: string; face?: string }
-        stat?: { view?: number; danmaku?: number }
+        stat?: { view?: number; like?: number; danmaku?: number }
+        goto?: string
+        track_id?: string
       }>
     }
   }

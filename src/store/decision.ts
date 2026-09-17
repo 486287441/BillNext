@@ -2,7 +2,8 @@ import { defineStore } from "pinia"
 
 import { shouldPromptUnfollow } from "../domain/decision-rules"
 import type { VideoDynamicCard } from "../domain/types"
-import { fetchFollowingRelations, followUp, saveToWatchLater, submitOfficialDislike, unfollowUp } from "../services/bilibili-api"
+import { getVideoIdentity } from "../domain/video-identity"
+import { fetchFollowingRelations, followUp, removeVideoFromWatchLater, saveToWatchLater, submitOfficialDislike, unfollowUp } from "../services/bilibili-api"
 import { readPersistedState, writePersistedState } from "../services/storage"
 import { showToast } from "../services/toast"
 import { useInboxStore } from "./inbox"
@@ -24,6 +25,39 @@ export const useDecisionStore = defineStore("decision", {
     relationLookupMids: new Set<string>(),
   }),
   actions: {
+    isWantWatch(card: VideoDynamicCard): boolean {
+      const identity = getVideoIdentity(card)
+      return this.wantWatchIds.has(card.dynamicId)
+        || this.wantWatchCards.some((item) => getVideoIdentity(item) === identity)
+    },
+    isDisliked(card: VideoDynamicCard): boolean {
+      if (this.dislikedIds.has(card.dynamicId)) return true
+      const identity = getVideoIdentity(card)
+      return useTrashStore().items.some((item) => getVideoIdentity(item.card) === identity)
+    },
+    syncWatchLaterCards(cards: VideoDynamicCard[]): void {
+      this.wantWatchCards = [...cards]
+      this.wantWatchIds = new Set(cards.map((card) => card.dynamicId))
+      writePersistedState({
+        wantWatchDynamicIds: [...this.wantWatchIds],
+        wantWatchCards: this.wantWatchCards,
+      })
+    },
+    forgetWatchLater(card: VideoDynamicCard): void {
+      const identity = getVideoIdentity(card)
+      const matchingIds = new Set(
+        this.wantWatchCards
+          .filter((item) => getVideoIdentity(item) === identity)
+          .map((item) => item.dynamicId),
+      )
+      matchingIds.add(card.dynamicId)
+      this.wantWatchCards = this.wantWatchCards.filter((item) => getVideoIdentity(item) !== identity)
+      this.wantWatchIds = new Set([...this.wantWatchIds].filter((id) => !matchingIds.has(id)))
+      writePersistedState({
+        wantWatchDynamicIds: [...this.wantWatchIds],
+        wantWatchCards: this.wantWatchCards,
+      })
+    },
     async ensureFollowingStatuses(cards: VideoDynamicCard[]): Promise<void> {
       const missing = [...new Set(cards.map((card) => card.upMid).filter(Boolean))]
         .filter((mid) => this.followingUpMap[mid] === undefined && !this.relationLookupMids.has(mid))
@@ -83,6 +117,11 @@ export const useDecisionStore = defineStore("decision", {
         return
       }
 
+      if (this.isWantWatch(card)) {
+        showToast("已在稍后再看")
+        return
+      }
+
       this.pendingMap[card.dynamicId] = true
       try {
         await saveToWatchLater(card)
@@ -104,25 +143,36 @@ export const useDecisionStore = defineStore("decision", {
         this.pendingMap[card.dynamicId] = false
       }
     },
-    async markDislike(card: VideoDynamicCard): Promise<boolean> {
+    async markDislike(card: VideoDynamicCard, mode: "local" | "home-recommendation" = "local"): Promise<boolean> {
       if (!card.dynamicId) {
         return false
       }
-      if (this.dislikedIds.has(card.dynamicId) || this.pendingMap[card.dynamicId]) {
+      if (this.isDisliked(card) || this.pendingMap[card.dynamicId]) {
         return false
       }
       this.pendingMap[card.dynamicId] = true
-      try {
-        await submitOfficialDislike(card)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "未知错误"
-        showToast(`B 站不感兴趣提交失败：${message}`, "error")
-        return false
-      } finally {
-        this.pendingMap[card.dynamicId] = false
+      const submitOfficialFeedback = mode === "home-recommendation"
+      const removeFromWatchLater = this.isWantWatch(card)
+      let officialFeedbackError = ""
+      let watchLaterError = ""
+      if (removeFromWatchLater) {
+        try {
+          await removeVideoFromWatchLater(card)
+          this.forgetWatchLater(card)
+        } catch (error) {
+          watchLaterError = error instanceof Error ? error.message : "未知错误"
+        }
+      }
+      if (submitOfficialFeedback) {
+        try {
+          // 只有接口明确返回 code === 0 时 submitOfficialDislike 才会成功返回。
+          await submitOfficialDislike(card)
+        } catch (error) {
+          officialFeedbackError = error instanceof Error ? error.message : "未知错误"
+        }
       }
       this.dislikedIds.add(card.dynamicId)
-      if (card.upMid) {
+      if (submitOfficialFeedback && card.upMid) {
         this.upDislikeCounts[card.upMid] = (this.upDislikeCounts[card.upMid] ?? 0) + 1
       }
 
@@ -137,9 +187,20 @@ export const useDecisionStore = defineStore("decision", {
 
       const inbox = useInboxStore()
       inbox.removeCard(card.dynamicId)
-      showToast("已提交 B 站不感兴趣并隐藏该视频")
+      this.pendingMap[card.dynamicId] = false
 
-      if (card.upMid) {
+      if (watchLaterError) {
+        showToast(`已移入垃圾箱；移出稍后再看失败：${watchLaterError}`, "error")
+      } else if (!submitOfficialFeedback) {
+        showToast(removeFromWatchLater ? "已移出稍后再看并移入垃圾箱" : "已移入垃圾箱")
+      } else if (officialFeedbackError) {
+        const watchLaterMessage = removeFromWatchLater ? "、已移出稍后再看" : ""
+        showToast(`已移入垃圾箱${watchLaterMessage}；B 站不感兴趣提交失败：${officialFeedbackError}`, "error")
+      } else {
+        showToast(removeFromWatchLater ? "已移出稍后再看、移入垃圾箱，并提交 B 站不感兴趣" : "已移入垃圾箱，并成功提交 B 站不感兴趣")
+      }
+
+      if (submitOfficialFeedback && card.upMid) {
         void this.maybePromptUnfollow(card.upMid, card.upName)
       }
       return true
