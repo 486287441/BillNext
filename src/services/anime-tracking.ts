@@ -165,22 +165,28 @@ export async function fetchAnimeByName(title: string, watchUrl: string): Promise
   const sourceUrl = validateWatchUrl(watchUrl)
   const matched = await searchBangumiSubject(title)
   const { subject, episodes } = await fetchBangumiSubject(matched.id)
-  return buildTrackingItem(title.trim(), sourceUrl, subject, episodes)
-}
-
-export async function refreshTrackedAnime(item: AnimeTrackingItem): Promise<AnimeTrackingItem> {
-  const sourceUrl = validateWatchUrl(item.sourceUrl || item.latestEpisodeUrl)
-  const subjectId = item.bangumiSubjectId || (item.kind === "bangumi" ? Number(item.lookupId) : 0)
-  if (Number.isFinite(subjectId) && subjectId > 0) {
-    const { subject, episodes } = await fetchBangumiSubject(subjectId)
-    return buildTrackingItem(item.queryTitle || item.title, sourceUrl, subject, episodes, item.seenEpisodeKey)
-  }
-  const fresh = await fetchAnimeByName(item.queryTitle || item.title, sourceUrl)
-  return { ...fresh, seenEpisodeKey: item.seenEpisodeKey || fresh.latestEpisodeKey }
+  const item = buildTrackingItem(title.trim(), sourceUrl, subject, episodes)
+  item.cover = await cacheAnimeCover(item.cover)
+  return item
 }
 
 export async function editTrackedAnime(item: AnimeTrackingItem, title: string, watchUrl: string): Promise<AnimeTrackingItem> {
-  const fresh = await fetchAnimeByName(title, watchUrl)
-  const sameSubject = fresh.bangumiSubjectId > 0 && fresh.bangumiSubjectId === item.bangumiSubjectId
-  return { ...fresh, seenEpisodeKey: sameSubject ? item.seenEpisodeKey : fresh.latestEpisodeKey }
+  const name = title.trim()
+  if (!name) throw new Error("请输入番剧名称")
+  return { ...item, title: name, queryTitle: name, sourceUrl: validateWatchUrl(watchUrl), latestEpisodeUrl: validateWatchUrl(watchUrl) }
+}
+
+export function cacheAnimeCover(url: string): Promise<string> {
+  if (!url || url.startsWith("data:image/")) return Promise.resolve(url)
+  url = url.replace(/^http:/, "https:")
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: "bangumi:cache-cover", url }, (response: { ok?: boolean; data?: string; error?: string } | undefined) => {
+      const error = chrome.runtime.lastError
+      if (error || !response?.ok) {
+        reject(new Error(error?.message || response?.error || "封面缓存失败，请检查网络后重试"))
+        return
+      }
+      resolve(response.data || "")
+    })
+  })
 }

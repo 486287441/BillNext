@@ -232,6 +232,31 @@ async function fetchChecklist(kind: string): Promise<ChecklistRow[]> {
 }
 
 chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (value: unknown) => void) => {
+  if (message?.type === "bangumi:cache-cover") {
+    void (async () => {
+      const url = new URL(String(message.url || ""))
+      if (url.protocol !== "https:" || url.hostname !== "lain.bgm.tv") throw new Error("不支持的封面来源")
+      const response = await fetch(url.href, { signal: AbortSignal.timeout(20000) })
+      if (!response.ok) throw new Error("封面下载失败，请连接网络后重新添加")
+      const blob = await response.blob()
+      if (!blob.type.startsWith("image/") || blob.size > 10 * 1024 * 1024) throw new Error("封面格式或大小异常")
+      const bitmap = await createImageBitmap(blob)
+      try {
+        const scale = Math.min(1, 360 / Math.max(bitmap.width, bitmap.height))
+        const canvas = new OffscreenCanvas(Math.max(1, Math.round(bitmap.width * scale)), Math.max(1, Math.round(bitmap.height * scale)))
+        const context = canvas.getContext("2d")
+        if (!context) throw new Error("无法缓存封面")
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+        const compressed = await canvas.convertToBlob({ type: "image/webp", quality: .82 })
+        const bytes = new Uint8Array(await compressed.arrayBuffer())
+        let binary = ""
+        for (const byte of bytes) binary += String.fromCharCode(byte)
+        return `data:${compressed.type};base64,${btoa(binary)}`
+      } finally { bitmap.close() }
+    })().then((data) => sendResponse({ ok: true, data }))
+      .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }))
+    return true
+  }
   if (message?.type === "tabs:open-background") {
     try {
       const url = new URL(typeof message.url === "string" ? message.url : "")

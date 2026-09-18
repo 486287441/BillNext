@@ -1,0 +1,147 @@
+/* Final motion layer: fast feedback, soft arrival, quiet departure.
+   Animate transforms/opacity; only the small navigation rail changes width. */
+#billnext-inbox-root {
+  --motion-fast: 140ms;
+  --motion-enter: 280ms;
+  --motion-layout: 360ms;
+  --motion-exit: 180ms;
+  --motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --motion-settle: cubic-bezier(.2, .75, .25, 1);
+
+  .motion-view { min-width: 0; width: 100%; }
+  .motion-list { position: relative; }
+  @media (min-width: 60rem) {
+    .home-showcase-secondary.motion-list { position: absolute; }
+  }
+
+  :is(button, .billnext-primary-nav a, .billnext-secondary-nav a) {
+    transition: transform var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) ease, color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease, box-shadow var(--motion-enter) var(--motion-ease);
+  }
+  :is(button, .billnext-primary-nav a, .billnext-secondary-nav a):active:not(:disabled) {
+    transform: scale(.96);
+  }
+  :is(input, textarea, select) {
+    transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+  }
+
+  .billnext-sidebar {
+    transition: width var(--motion-layout) var(--motion-ease), padding var(--motion-layout) var(--motion-ease);
+  }
+  .billnext-brand { transition: opacity var(--motion-exit) ease; }
+  @media (min-width: 861px) {
+    .billnext-sidebar :is(.billnext-primary-nav, .billnext-secondary-nav) :is(a, button),
+    .billnext-sidebar.is-collapsed :is(.billnext-primary-nav, .billnext-secondary-nav) :is(a, button) {
+      justify-content: flex-start; padding-left: 12px; padding-right: 8px; gap: 10px;
+      overflow: hidden;
+    }
+    .billnext-sidebar :is(.billnext-primary-nav, .billnext-secondary-nav) svg { flex-shrink: 0; }
+    .billnext-sidebar.is-collapsed :is(.billnext-primary-nav, .billnext-secondary-nav) :is(a, button) { gap: 0; }
+  }
+  .billnext-collapse-toggle { transition: right var(--motion-layout) var(--motion-ease), background var(--motion-fast) ease; }
+  :is(.billnext-primary-nav, .billnext-secondary-nav) :is(a, button) { position: relative; }
+  :is(.billnext-primary-nav, .billnext-secondary-nav) a::before {
+    content: ""; position: absolute; left: 3px; top: 30%; bottom: 30%; width: 3px;
+    border-radius: 3px; background: currentColor; opacity: 0; transform: scaleY(.25);
+    transition: opacity var(--motion-fast) ease, transform var(--motion-enter) var(--motion-ease);
+  }
+  :is(.billnext-primary-nav, .billnext-secondary-nav) a.active::before { opacity: 1; transform: scaleY(1); }
+  :is(.billnext-primary-nav, .billnext-secondary-nav) span,
+  .billnext-profile > span:nth-child(2) {
+    transition: max-width var(--motion-layout) var(--motion-ease),
+      opacity var(--motion-exit) ease, transform var(--motion-layout) var(--motion-ease);
+  }
+  .inbox-shell:not(.dynamic-feed-embedded) {
+    transition: padding-left var(--motion-layout) var(--motion-ease), padding-right var(--motion-layout) var(--motion-ease);
+  }
+  .workspace-toolbar {
+    transition: left var(--motion-layout) var(--motion-ease), width var(--motion-layout) var(--motion-ease),
+      transform var(--motion-enter) var(--motion-ease), opacity var(--motion-exit) ease;
+  }
+
+  .video-card {
+    transition: transform var(--motion-enter) var(--motion-ease), opacity var(--motion-exit) ease;
+  }
+  .video-card .video-cover {
+    transition: transform 420ms var(--motion-ease);
+  }
+  .video-inline-actions {
+    transform: translateY(3px);
+    transition: opacity var(--motion-exit) ease, transform var(--motion-enter) var(--motion-ease);
+  }
+  .video-card:is(:hover, :focus-within) .video-inline-actions { transform: translateY(0); }
+  .video-card .video-meta-slot .video-subtitle { transition: opacity var(--motion-exit) ease; }
+  .video-inline-actions button.is-saved > span[aria-hidden] { animation: motion-confirm 320ms var(--motion-ease); }
+
+  :is(.motion-popover-enter-active, .filter-popover-enter-active) {
+    transition: opacity var(--motion-exit) ease, transform var(--motion-enter) var(--motion-ease);
+  }
+  :is(.motion-popover-leave-active, .filter-popover-leave-active) {
+    transition: opacity var(--motion-fast) ease, transform var(--motion-exit) var(--motion-ease);
+    pointer-events: none;
+  }
+  .video-actions-menu { transform-origin: bottom right; }
+  .motion-expand-enter-active { transition: opacity var(--motion-enter) ease, transform var(--motion-enter) var(--motion-ease); }
+  .motion-expand-leave-active { transition: opacity var(--motion-fast) ease, transform var(--motion-exit) var(--motion-ease); pointer-events: none; }
+  .motion-expand-enter-from, .motion-expand-leave-to { opacity: 0; transform: translateY(-6px) scale(.99); }
+  .anime-card-editor { animation: motion-editor-in var(--motion-enter) var(--motion-ease); }
+  :is(.motion-popover-enter-from, .motion-popover-leave-to) { opacity: 0; transform: translateY(5px) scale(.96); }
+  :is(.filter-popover-enter-from, .filter-popover-leave-to) { opacity: 0; transform: translateY(-5px) scale(.97); }
+  .settings-window-enter-active { transition: opacity var(--motion-enter) ease; }
+  .settings-window-leave-active { transition: opacity var(--motion-exit) ease; pointer-events: none; }
+  .settings-window-enter-active .settings-modal-panel {
+    transition: opacity var(--motion-enter) ease, transform var(--motion-layout) var(--motion-ease);
+  }
+  .settings-window-leave-active .settings-modal-panel {
+    transition: opacity var(--motion-exit) ease, transform var(--motion-exit) var(--motion-ease);
+  }
+  :is(.settings-window-enter-from, .settings-window-leave-to) .settings-modal-panel {
+    opacity: 0; transform: translateY(10px) scale(.98);
+  }
+
+  // These override the legacy transition:none rules for every shared list.
+  .motion-list > :is(.home-card-move, .checklist-card-move, .live-card-move, .history-row-move) {
+    transition: transform var(--motion-layout) var(--motion-settle);
+  }
+  .motion-list > :is(.home-card-enter-active, .checklist-card-enter-active, .live-card-enter-active, .history-row-enter-active) {
+    transition: opacity var(--motion-enter) ease, transform var(--motion-layout) var(--motion-ease);
+    transition-delay: var(--motion-delay, 0ms);
+  }
+  .motion-list > :is(.home-card-leave-active, .checklist-card-leave-active, .live-card-leave-active, .history-row-leave-active) {
+    position: absolute; box-sizing: border-box; pointer-events: none;
+    transition: opacity var(--motion-exit) ease, transform var(--motion-exit) var(--motion-ease);
+  }
+  .motion-list > :is(.home-card-enter-from, .checklist-card-enter-from, .live-card-enter-from, .history-row-enter-from) {
+    opacity: 0; transform: translateY(8px) scale(.99);
+  }
+  .motion-list > :is(.home-card-leave-to, .checklist-card-leave-to, .live-card-leave-to, .history-row-leave-to) {
+    opacity: 0; transform: scale(.96);
+  }
+  .motion-list > .motion-offscreen { transition-duration: 0s; transition-delay: 0s; }
+  .video-card.is-flip-animating { transition-property: opacity; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .video-card:hover:not(.home-card-leave-active):not(.home-card-enter-active) { transform: translateY(-2px); }
+    .video-card:hover .video-cover { transform: scale(1.025); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &, *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+    .video-card:hover, .video-card:hover .video-cover, .video-inline-actions { transform: none !important; }
+  }
+}
+@keyframes motion-editor-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes motion-confirm {
+  0% { transform: scale(.75); }
+  55% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}

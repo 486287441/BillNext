@@ -13,6 +13,7 @@
       @toggle-sidebar-collapsed="onToggleSidebarCollapsed"
     />
 
+    <MotionView :identity="viewMode">
     <section v-if="viewMode === 'inbox' && inbox.error" class="inbox-error">
       {{ inbox.error }}
     </section>
@@ -53,6 +54,7 @@
     </section>
 
     <UpFilterView v-else-if="viewMode === 'up-filter'" />
+    </MotionView>
 
     <TrashModal
       v-if="!props.embedded"
@@ -70,6 +72,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 
 import TopToolbar from "../components/TopToolbar.vue"
+import MotionView from "../components/MotionView.vue"
 import AppNav from "../components/AppNav.vue"
 import type { HomeTabValue } from "../components/HomeTabsBar.vue"
 import UpFilterView from "../components/UpFilterView.vue"

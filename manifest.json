@@ -17,6 +17,7 @@
     "https://api.bilibili.com/*",
     "https://api.live.bilibili.com/*",
     "https://api.bgm.tv/*",
+    "https://lain.bgm.tv/*",
     "https://api.graphql.imdb.com/*",
     "https://v3.sg.media-imdb.com/*",
     "https://m.douban.com/*",

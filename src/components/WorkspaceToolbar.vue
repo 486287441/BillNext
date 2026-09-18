@@ -1,5 +1,5 @@
 <template>
-  <header ref="toolbarRef" class="workspace-toolbar" :class="{ 'is-search-only': searchOnly, 'is-scroll-hidden': toolbarHidden }" aria-label="全局工具栏" @focusin="toolbarHidden = false">
+  <header ref="toolbarRef" class="workspace-toolbar" :class="{ 'is-inline': inline, 'is-search-only': searchOnly, 'is-scroll-hidden': toolbarHidden }" aria-label="全局工具栏" @focusin="toolbarHidden = false">
     <form class="workspace-global-search" :class="{ 'is-scoped-search': isScopedSearch }" role="search" @submit.prevent="search">
       <Icon icon="mingcute:search-2-line" />
       <span v-if="isScopedSearch" class="workspace-search-scope">{{ searchScopeLabel }}</span>
@@ -64,6 +64,7 @@ const props = defineProps<{
   minDurationMinutes: string
   publishAfterDate: string
   refreshing?: boolean
+  inline?: boolean
   searchOnly?: boolean
   blockedKeywords?: string[]
   keywordFilterEnabled?: boolean
@@ -83,6 +84,7 @@ let lastScrollTop = 0
 let directionDistance = 0
 
 function onFeedScroll(): void {
+  if (props.inline) return
   const top = Math.max(0, scrollRoot ? scrollRoot.scrollTop : window.scrollY)
   const delta = top - lastScrollTop
   lastScrollTop = top
@@ -169,7 +171,7 @@ function onShortcut(event: KeyboardEvent): void {
 onMounted(() => {
   scrollRoot = toolbarRef.value?.closest<HTMLElement>("#billnext-inbox-root") ?? null
   lastScrollTop = scrollRoot ? scrollRoot.scrollTop : window.scrollY
-  ;(scrollRoot ?? window).addEventListener("scroll", onFeedScroll, { passive: true })
+  if (!props.inline) (scrollRoot ?? window).addEventListener("scroll", onFeedScroll, { passive: true })
   window.addEventListener("keydown", onShortcut)
   document.addEventListener("pointerdown", onDocumentPointerDown)
 })

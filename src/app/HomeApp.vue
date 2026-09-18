@@ -1,5 +1,5 @@
 <template>
-  <main class="inbox-shell home-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'checklist-active': !libraryKind && activeTab === 'checklist', 'live-active': !libraryKind && activeTab === 'live' }">
+  <main class="inbox-shell home-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'library-active': Boolean(libraryKind), 'checklist-active': !libraryKind && activeTab === 'checklist', 'live-active': !libraryKind && activeTab === 'live' }">
     <AppNav
       :active="navActive"
       :trash-count="trash.count"
@@ -23,7 +23,7 @@
       @toggle-sidebar-collapsed="toggleHomeSidebarCollapsed"
     />
     <WorkspaceToolbar
-      v-if="libraryKind || (activeTab !== 'checklist' && activeTab !== 'live')"
+      v-if="!libraryKind && activeTab !== 'checklist' && activeTab !== 'live'"
       :scope="toolbarScope"
       :search-only="!libraryKind && activeTab === 'tracking'"
       :min-duration-minutes="toolbarMinDurationMinutes"
@@ -38,6 +38,7 @@
       @refresh="refresh"
     />
 
+    <MotionView :identity="libraryKind || activeTab">
     <LibraryView
       v-if="libraryKind"
       :kind="libraryKind"
@@ -66,7 +67,25 @@
       @add-favorite="onAddLibraryFavorite"
       @remove-favorite="onRemoveLibraryFavorite"
       @remove-watch-later="onRemoveLibraryWatchLater"
+    >
+      <template #controls>
+    <WorkspaceToolbar
+      inline
+      :scope="toolbarScope"
+      :search-only="!libraryKind && activeTab === 'tracking'"
+      :min-duration-minutes="toolbarMinDurationMinutes"
+      :publish-after-date="toolbarPublishAfterDate"
+      :blocked-keywords="homeBlockedKeywords"
+      :keyword-filter-enabled="showHomeVideoFeed"
+      :refreshing="toolbarRefreshing"
+      @update:min-duration-minutes="setScopedMinDuration"
+      @update:publish-after-date="setScopedPublishAfter"
+      @update:blocked-keywords="setHomeBlockedKeywords"
+      @update:search-query="setScopedSearchQuery"
+      @refresh="refresh"
     />
+      </template>
+    </LibraryView>
 
     <DynamicFeed
       v-if="!libraryKind && activeTab === 'following'"
@@ -87,11 +106,15 @@
     <AnimeTrackingView
       v-if="!libraryKind && activeTab === 'tracking'"
       :items="trackedAnime"
+      :cover-cache-state="coverCacheState"
+      @retry-cover="cacheTrackedCover"
       :loading="trackingLoading"
       :error="trackingError"
       @add="addTrackedAnime"
       @edit="editTrackedAnimeItem"
-      @open="markAnimeSeen"
+      @open="openTrackedAnime"
+      :opening-id="animeOpeningId"
+      :opening-label="animeOpeningLabel"
       @remove="removeTrackedAnime"
       @clear-error="trackingError = ''"
     />
@@ -110,6 +133,7 @@
 
     <section v-else-if="showHomeVideoFeed" class="home-showcase">
       <div class="home-showcase-lead">
+        <MotionList class="home-featured-frame">
         <VideoCard
           v-for="card in leadCards.slice(0, 1)"
           :key="card.dynamicId"
@@ -128,8 +152,9 @@
           @help-read="onHelpRead(card)"
           @dislike="onDislike(card)"
         />
+        </MotionList>
         <div class="home-showcase-side-frame">
-        <TransitionGroup class="home-showcase-secondary" tag="div" name="home-card">
+        <MotionList class="home-showcase-secondary">
           <VideoCard
           v-for="card in leadCards.slice(1, 4)"
           :key="card.dynamicId"
@@ -148,14 +173,14 @@
           @help-read="onHelpRead(card)"
           @dislike="onDislike(card)"
         />
-        </TransitionGroup>
+        </MotionList>
         </div>
       </div>
 
       <div v-if="moreCards.length" class="home-showcase-section-head">
         <h2>更多推荐</h2>
       </div>
-      <TransitionGroup v-if="moreCards.length" class="home-showcase-more" tag="div" name="home-card">
+      <MotionList v-if="moreCards.length" class="home-showcase-more">
         <VideoCard
           v-for="card in moreCards"
           :key="card.dynamicId"
@@ -174,7 +199,7 @@
           @help-read="onHelpRead(card)"
           @dislike="onDislike(card)"
         />
-      </TransitionGroup>
+      </MotionList>
     </section>
 
     <div v-if="showHomeVideoFeed" class="home-feed-sentinel">
@@ -183,17 +208,21 @@
       <span v-else-if="cards.length">已经到底了</span>
     </div>
 
+    </MotionView>
     <TrashModal :open="trash.open" :items="trash.items" @close="trash.setOpen(false)" @restore="onRestore" @restore-all="onRestoreAll" @clear-all="onClearAll" />
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue"
 import DynamicFeed from "./App.vue"
+import MotionView from "../components/MotionView.vue"
+import MotionList from "../components/MotionList.vue"
 import AppNav from "../components/AppNav.vue"
 import TopToolbar from "../components/TopToolbar.vue"
 import type { HomeTabValue } from "../components/HomeTabsBar.vue"
 import WorkspaceToolbar from "../components/WorkspaceToolbar.vue"
+import { resolveAnimeWatchLink } from "../services/anime-watch-link"
 import AnimeTrackingView, { type AnimeEditorPayload } from "../components/AnimeTrackingView.vue"
 import ChecklistView from "../components/ChecklistView.vue"
 import LiveFollowingView from "../components/LiveFollowingView.vue"
@@ -218,7 +247,7 @@ import {
   removeVideoFromFavorite,
   removeVideoFromWatchLater,
 } from "../services/bilibili-api"
-import { editTrackedAnime, fetchAnimeByName, refreshTrackedAnime } from "../services/anime-tracking"
+import { cacheAnimeCover, editTrackedAnime, fetchAnimeByName } from "../services/anime-tracking"
 import { readPersistedState, writePersistedState } from "../services/storage"
 import { showToast } from "../services/toast"
 import { useDecisionStore } from "../store/decision"
@@ -264,6 +293,8 @@ const sidebarCollapsed = ref(persisted.sidebarCollapsed)
 const trackedAnime = ref<AnimeTrackingItem[]>(persisted.trackedAnime)
 const watchedChecklistIds = ref<string[]>(persisted.watchedChecklistIds)
 const checklistAvailability = ref(persisted.checklistAvailability)
+const animeOpeningId = ref("")
+const animeOpeningLabel = ref("")
 const trackingLoading = ref(false)
 const trackingError = ref("")
 const liveRooms = ref<LiveRoomCard[]>([])
@@ -501,7 +532,7 @@ function syncLibraryFromUrl(): void {
   if (activeTab.value === nextTab) return
   activeTab.value = nextTab
   query.value = ""
-  if (nextTab === "tracking") void refreshTrackedAnimeList()
+  if (nextTab === "tracking") return
   else if (nextTab === "live") void loadLiveRooms()
   else if (nextTab !== "following" && nextTab !== "checklist" && !cards.value.length) void refresh()
 }
@@ -527,7 +558,6 @@ async function selectTab(tab: HomeTab): Promise<void> {
     return
   }
   if (tab === "tracking") {
-    void refreshTrackedAnimeList()
     return
   }
   if (tab === "checklist") return
@@ -613,7 +643,6 @@ async function refresh(): Promise<void> {
     return
   }
   if (activeTab.value === "tracking") {
-    await refreshTrackedAnimeList()
     return
   }
   if (activeTab.value === "live") {
@@ -632,8 +661,37 @@ async function refresh(): Promise<void> {
   }
 }
 
+const coverCacheState = reactive<Record<string, string>>({})
+async function cacheTrackedCover(item: AnimeTrackingItem): Promise<void> {
+  if (!item.cover || item.cover.startsWith("data:image/") || coverCacheState[item.id] === "pending") return
+  const originalCover = item.cover
+  coverCacheState[item.id] = "pending"
+  try {
+    const cover = await cacheAnimeCover(originalCover)
+    if (!cover.startsWith("data:image/")) throw new Error("封面缓存未返回图片，请重新加载扩展后重试")
+    const current = trackedAnime.value.find((row) => row.id === item.id)
+    if (!current || current.cover !== originalCover) return
+    const next = trackedAnime.value.map((row) => row.id === item.id ? { ...row, cover } : row)
+    if (!writePersistedState({ trackedAnime: next })) throw new Error("本地存储空间不足，无法保存封面")
+    trackedAnime.value = next
+    delete coverCacheState[item.id]
+  } catch (caught) {
+    coverCacheState[item.id] = caught instanceof Error ? caught.message : "封面缓存失败，请重试"
+  }
+}
+function migrateTrackedCovers(): void {
+  for (const item of trackedAnime.value) {
+    if (!coverCacheState[item.id]) void cacheTrackedCover(item)
+  }
+}
+watch([activeTab, libraryKind], () => {
+  if (activeTab.value === "tracking" && !libraryKind.value) migrateTrackedCovers()
+})
+
 function persistTrackedAnime(): void {
-  writePersistedState({ trackedAnime: trackedAnime.value })
+  if (!writePersistedState({ trackedAnime: trackedAnime.value })) {
+    throw new Error("本地存储空间不足，追番资料未能保存，请清理空间后重试")
+  }
 }
 
 async function addTrackedAnime(payload: AnimeEditorPayload): Promise<void> {
@@ -684,27 +742,43 @@ async function editTrackedAnimeItem(payload: AnimeEditorPayload & { item: AnimeT
   }
 }
 
-async function refreshTrackedAnimeList(): Promise<void> {
-  if (trackingLoading.value || !trackedAnime.value.length) return
-  trackingLoading.value = true
+async function openTrackedAnime(item: AnimeTrackingItem): Promise<void> {
+  if (animeOpeningId.value) return
+  // 在点击手势中预留标签页，避免异步检测后被浏览器拦截。
+  const tab = window.open("about:blank", "_blank")
+  if (!tab) {
+    trackingError.value = "浏览器阻止了新标签页，请允许弹出窗口后重试"
+    return
+  }
+  tab.opener = null
+  animeOpeningId.value = item.id
+  animeOpeningLabel.value = "检查链接中…"
   trackingError.value = ""
-  const results = await Promise.allSettled(trackedAnime.value.map((item) => refreshTrackedAnime(item)))
-  let failed = 0
-  trackedAnime.value = trackedAnime.value.map((item, index) => {
-    const result = results[index]
-    if (result.status === "fulfilled") return result.value
-    failed += 1
-    return item
-  })
-  persistTrackedAnime()
-  if (failed) trackingError.value = `${failed} 部番暂时刷新失败，已保留上次信息`
-  trackingLoading.value = false
-}
-
-function markAnimeSeen(item: AnimeTrackingItem): void {
-  if (item.seenEpisodeKey === item.latestEpisodeKey) return
-  item.seenEpisodeKey = item.latestEpisodeKey
-  persistTrackedAnime()
+  try {
+    const originalUrl = item.sourceUrl
+    const result = await resolveAnimeWatchLink(originalUrl, item.queryTitle || item.title, () => {
+      animeOpeningLabel.value = "重新匹配中…"
+    })
+    if (tab.closed) return
+    const current = trackedAnime.value.find((row) => row.id === item.id)
+    if (!current || current.sourceUrl !== originalUrl) {
+      tab.close()
+      return
+    }
+    tab.location.replace(result.url)
+    current.sourceUrl = result.url
+    current.latestEpisodeUrl = result.url
+    current.seenEpisodeKey = current.latestEpisodeKey
+    persistTrackedAnime()
+    if (result.replaced) showToast("原链接已失效，已匹配并保存新的合集链接")
+    else if (!result.verified) showToast("暂时无法确认链接状态，已打开原链接")
+  } catch (caught) {
+    tab.close()
+    trackingError.value = caught instanceof Error ? caught.message : "检查观看链接失败，请重试"
+  } finally {
+    animeOpeningId.value = ""
+    animeOpeningLabel.value = ""
+  }
 }
 
 function removeTrackedAnime(item: AnimeTrackingItem): void {
@@ -909,7 +983,7 @@ onMounted(() => {
   scrollRoot?.addEventListener("scroll", scheduleAutoFill, { passive: true })
   window.addEventListener("popstate", syncLibraryFromUrl)
   if (libraryKind.value) void loadLibrary(true)
-  else if (activeTab.value === "tracking") void refreshTrackedAnimeList()
+  else if (activeTab.value === "tracking") migrateTrackedCovers()
   else if (activeTab.value === "live") void loadLiveRooms()
   else if (activeTab.value !== "checklist") void refresh()
 })

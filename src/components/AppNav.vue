@@ -67,7 +67,7 @@ import type { LibraryKind } from "../domain/types"
 import type { HomeTabValue } from "./HomeTabsBar.vue"
 
 type NavActive = "home" | "moments" | "live" | "tracking" | "checklist" | "favorites" | "history" | "watchlater"
-const props = withDefaults(defineProps<{ active: NavActive; trashCount: number; collapsed?: boolean }>(), {
+const props = withDefaults(defineProps<{ active: NavActive; trashCount: number; collapsed?: boolean; localNavigation?: boolean }>(), {
   collapsed: false,
 })
 const emit = defineEmits<{
@@ -99,7 +99,7 @@ const primaryItems = computed(() => [
 ])
 
 function onPrimaryClick(event: MouseEvent, tab: HomeTabValue): void {
-  if (window.location.hostname !== "www.bilibili.com") return
+  if (!props.localNavigation && window.location.hostname !== "www.bilibili.com") return
   event.preventDefault()
   emit("navigate-tab", tab)
 }

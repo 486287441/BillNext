@@ -176,7 +176,7 @@ async function searchPageReliably(
   throw lastError instanceof Error ? lastError : new Error("B 站综合排序请求失败")
 }
 
-export async function findBestAnimeWatchLink(title: string): Promise<AnimeWatchMatch> {
+export async function findBestAnimeWatchLink(title: string, accept?: (url: string) => Promise<boolean>): Promise<AnimeWatchMatch> {
   const keyword = title.trim()
   if (!keyword) throw new Error("请先填写番剧名称")
   let primaryVideos: BilibiliSearchVideo[]
@@ -220,11 +220,11 @@ export async function findBestAnimeWatchLink(title: string): Promise<AnimeWatchM
     .filter((item): item is ScoredCandidate => item !== null)
     .sort((left, right) => right.score - left.score || right.playCount - left.playCount || right.danmakuCount - left.danmakuCount)
 
-  const best = candidates[0]
-  if (!best) throw new Error(`没有找到与“${keyword}”高度相关且播放量超过 5 万的合集`)
+  if (!candidates.length) throw new Error(`没有找到与“${keyword}”高度相关且播放量超过 5 万的合集`)
+  for (const best of candidates.slice(0, accept ? 8 : 1)) {
   const bvid = best.item.bvid?.trim()
   const url = bvid ? `https://www.bilibili.com/video/${bvid}` : plainText(best.item.arcurl)
-  if (!url) throw new Error("匹配结果缺少可用的视频链接")
+  if (!url || (accept && !await accept(url))) continue
   return {
     title: best.title,
     url,
@@ -234,4 +234,6 @@ export async function findBestAnimeWatchLink(title: string): Promise<AnimeWatchM
     durationSeconds: best.durationSeconds,
     score: best.score,
   }
+  }
+  throw new Error("没有匹配到可正常打开的合集，请稍后重试或手动编辑观看链接")
 }

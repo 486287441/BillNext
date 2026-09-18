@@ -1,14 +1,15 @@
 <template>
   <main class="inbox-shell home-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
-    <AppNav :active="previewTab === 'checklist' ? 'checklist' : previewTab === 'recommended' ? 'home' : 'moments'" :trash-count="0" :collapsed="sidebarCollapsed" @update:collapsed="updateSidebar" @navigate-tab="previewTab = $event" @navigate-library="() => undefined" @open-tools="showPreviewToast('筛选设置已打开')" />
+    <AppNav local-navigation :active="previewTab === 'checklist' ? 'checklist' : previewTab === 'recommended' ? 'home' : 'moments'" :trash-count="0" :collapsed="sidebarCollapsed" @update:collapsed="updateSidebar" @navigate-tab="previewTab = $event" @navigate-library="() => undefined" @open-tools="showPreviewToast('筛选设置已打开')" />
     <WorkspaceToolbar v-if="previewTab !== 'checklist'" :scope="previewTab === 'recommended' ? 'home' : 'dynamics'" min-duration-minutes="" publish-after-date="" :keyword-filter-enabled="previewTab === 'recommended'" :blocked-keywords="homeBlockedKeywords" @update:blocked-keywords="setBlockedKeywords" />
 
+    <MotionView :identity="previewTab">
     <ChecklistView v-if="previewTab === 'checklist'" :watched-ids="watchedChecklistIds" :availability-map="{}" @update:watched-ids="watchedChecklistIds = $event" />
 
     <section v-else class="inbox-content" :class="{ 'home-showcase-preview': previewTab === 'recommended', 'dynamic-inbox-content': previewTab !== 'recommended' }">
       <article v-if="previewTab !== 'recommended'" class="group-block">
         <h2><span>今天</span><small>{{ visibleCards.length }}</small></h2>
-        <div class="group-list">
+        <MotionList class="group-list">
           <VideoCard
             v-for="card in visibleCards"
             :key="card.dynamicId"
@@ -24,10 +25,11 @@
             @dislike="hideCard(card)"
             @toggle-follow="() => undefined"
           />
-        </div>
+        </MotionList>
       </article>
       <section v-else class="home-showcase">
         <div class="home-showcase-lead">
+        <MotionList class="home-featured-frame">
         <VideoCard
             v-for="card in visibleCards.slice(0, 1)"
             :key="card.dynamicId"
@@ -44,8 +46,9 @@
             @help-read="startReading(card)"
             @dislike="hideCard(card)"
           />
+        </MotionList>
         <div class="home-showcase-side-frame">
-        <TransitionGroup class="home-showcase-secondary" tag="div" name="home-card">
+        <MotionList class="home-showcase-secondary" tag="div" name="home-card">
           <VideoCard
             v-for="card in visibleCards.slice(1, 4)"
             :key="card.dynamicId"
@@ -62,11 +65,11 @@
             @help-read="startReading(card)"
             @dislike="hideCard(card)"
           />
-        </TransitionGroup>
+        </MotionList>
         </div>
       </div>
         <div class="home-showcase-section-head"><h2>更多推荐</h2></div>
-        <div class="home-showcase-more">
+        <MotionList class="home-showcase-more">
           <VideoCard
             v-for="card in visibleCards.slice(4)"
             :key="card.dynamicId"
@@ -82,15 +85,18 @@
             @help-read="startReading(card)"
             @dislike="hideCard(card)"
           />
-        </div>
+        </MotionList>
       </section>
     </section>
 
+    </MotionView>
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue"
+import MotionView from "../components/MotionView.vue"
+import MotionList from "../components/MotionList.vue"
 import AppNav from "../components/AppNav.vue"
 import ChecklistView from "../components/ChecklistView.vue"
 import VideoCard from "../components/VideoCard.vue"

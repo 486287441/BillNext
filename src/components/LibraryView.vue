@@ -1,30 +1,21 @@
 <template>
-  <section class="library-view">
-    <header class="library-header" :class="{ 'has-history-summary': kind === 'history' }">
-      <div>
-        <span class="library-kicker">MY LIBRARY</span>
-        <h1>{{ title }}</h1>
-        <p>{{ subtitle }}</p>
-      </div>
-      <aside v-if="kind === 'history'" class="history-today-summary" aria-label="今日观看摘要">
-        <div>
-          <span><Icon icon="mingcute:play-circle-line" />今日观看</span>
-          <strong>{{ todayHistoryCount }}<small>个视频</small></strong>
-        </div>
-        <i aria-hidden="true"></i>
-        <div>
-          <span><Icon icon="mingcute:hourglass-line" />累计时长</span>
-          <strong>{{ todayHistoryDuration }}</strong>
-        </div>
-      </aside>
-    </header>
+  <section class="library-view" :class="{ 'library-view-history': kind === 'history' }">
+    <PageHeader :title="title" :subtitle="subtitle">
+      <template v-if="kind === 'history'" #meta>
+        <p class="library-history-summary" aria-live="polite">今日 {{ todayHistoryCount }} 个视频 <span aria-hidden="true">·</span> {{ todayHistoryDuration }}</p>
+      </template>
+    </PageHeader>
+    <div class="library-controls">
+      <slot name="controls" />
+    </div>
 
-    <div v-if="kind === 'favorites' && folders.length" class="library-folders" aria-label="收藏夹">
+    <div v-if="kind === 'favorites' && folders.length" ref="folderStrip" class="library-folders" :class="{ 'has-more-right': foldersOverflowRight }" aria-label="收藏夹" tabindex="0" @scroll.passive="updateFolderOverflow">
       <button
         v-for="folder in folders"
         :key="folder.id"
         type="button"
         :class="{ active: folder.id === activeFolderId }"
+        :aria-pressed="folder.id === activeFolderId"
         @click="$emit('select-folder', folder.id)"
       >
         <span>{{ folder.title }}</span><small>{{ folder.mediaCount }}</small>
@@ -44,12 +35,11 @@
           <header class="history-period-heading">
             <div>
               <p>{{ group.eyebrow }}</p>
-              <h2>{{ group.label }}</h2>
+              <h2>{{ group.label }}<small :aria-label="`${group.items.length} 条记录`">{{ group.items.length }}</small></h2>
             </div>
-            <span>{{ group.items.length }} 条</span>
           </header>
 
-          <TransitionGroup class="history-period-list" tag="div" name="history-row">
+          <MotionList class="history-period-list" tag="div" name="history-row">
             <article v-for="card in group.items" :key="card.dynamicId" class="history-row">
               <a class="history-row-cover" :href="getVideoUrl(card)" target="_blank" rel="noopener noreferrer">
                 <img :src="historyCover(card.cover)" :alt="card.title" loading="lazy" />
@@ -64,11 +54,9 @@
                   <span v-if="card.danmakuCount">{{ formatCount(card.danmakuCount) }} 弹幕</span>
                 </div>
               </div>
-              <a class="history-row-rewatch" :href="getVideoUrl(card)" target="_blank" rel="noopener noreferrer" aria-label="再次观看" title="再次观看">
-                <Icon icon="mingcute:arrow-right-up-line" />
-              </a>
+
             </article>
-          </TransitionGroup>
+          </MotionList>
           <span v-if="groupIndex === historyGroups.length - 1" class="history-timeline-cap" aria-hidden="true"></span>
         </section>
       </div>
@@ -86,7 +74,7 @@
       <div v-else-if="error" class="library-state is-error"><Icon icon="mingcute:warning-line" /><span>{{ error }}</span><button type="button" @click="$emit('retry')">重试</button></div>
       <div v-else-if="!cards.length" class="library-state"><Icon :icon="emptyIcon" /><span>{{ emptyText }}</span></div>
 
-      <TransitionGroup v-else class="home-video-grid library-five-grid" tag="div" name="home-card">
+      <MotionList v-else class="home-video-grid library-five-grid" tag="div" name="home-card">
         <VideoCard
           v-for="card in cards"
           :key="card.dynamicId"
@@ -107,7 +95,7 @@
           @remove-favorite="$emit('remove-favorite', card)"
           @remove-watch-later="$emit('remove-watch-later', card)"
         />
-      </TransitionGroup>
+      </MotionList>
 
       <button v-if="hasMore && cards.length" class="library-load-more" type="button" :disabled="loading" @click="$emit('load-more')">
         {{ loading ? "加载中…" : "加载更多" }}
@@ -117,8 +105,10 @@
 </template>
 
 <script setup lang="ts">
+import PageHeader from "./PageHeader.vue"
+import MotionList from "./MotionList.vue"
 import { Icon } from "@iconify/vue"
-import { computed } from "vue"
+import { computed, ref, watch, onBeforeUnmount } from "vue"
 import type { FavoriteFolder, LibraryKind, VideoDynamicCard } from "../domain/types"
 import type { TranscriberCardState } from "../store/transcriber"
 import { getVideoUrl } from "../utils/video-url"
@@ -155,9 +145,27 @@ defineEmits<{
   (event: "remove-watch-later", card: VideoDynamicCard): void
 }>()
 
+const folderStrip = ref<HTMLElement | null>(null)
+const foldersOverflowRight = ref(false)
+let folderResizeObserver: ResizeObserver | undefined
+function updateFolderOverflow(): void {
+  const strip = folderStrip.value
+  foldersOverflowRight.value = !!strip && strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 2
+}
+watch(folderStrip, (strip) => {
+  folderResizeObserver?.disconnect()
+  if (strip) {
+    folderResizeObserver = new ResizeObserver(updateFolderOverflow)
+    folderResizeObserver.observe(strip)
+  }
+  updateFolderOverflow()
+}, { flush: "post" })
+watch(() => props.folders, updateFolderOverflow, { deep: true, flush: "post" })
+onBeforeUnmount(() => folderResizeObserver?.disconnect())
+
 const title = computed(() => ({ favorites: "我的收藏", history: "观看历史", watchlater: "稍后再看" })[props.kind])
 const subtitle = computed(() => ({
-  favorites: "按收藏夹整理，随时回到值得保留的内容",
+  favorites: "整理并查看你收藏的内容",
   history: "找回最近看过的视频",
   watchlater: "留到合适的时候，再认真看完",
 })[props.kind])
@@ -221,7 +229,7 @@ const historyGroups = computed<HistoryGroup[]>(() => {
 
 function historyCover(cover: string): string {
   if (!cover || !/hdslb\.com/i.test(cover)) return cover
-  return cover + "@320w_180h_1c"
+  return cover + "@672w_378h_1c"
 }
 function historyDateTime(timestamp: number): string { return new Date(timestamp * 1000).toISOString() }
 function historyTime(timestamp: number): string {

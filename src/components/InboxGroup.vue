@@ -1,11 +1,11 @@
 <template>
-  <article class="group-block" ref="groupRef">
+  <article class="group-block">
     <h2><span>{{ group.label }}</span><small>{{ displayCount }}</small></h2>
-    <TransitionGroup
+    <MotionList
       class="group-list"
       tag="div"
-      :css="false"
-      @leave="onLeave"
+      @after-leave="onLeaveComplete"
+      @after-enter="onEnterComplete"
     >
       <VideoCard
         v-for="item in group.items"
@@ -23,22 +23,16 @@
         @dislike="$emit('dislike', item)"
         @toggle-follow="$emit('toggle-follow', item)"
       />
-    </TransitionGroup>
+    </MotionList>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue"
+import { computed } from "vue"
+import MotionList from "./MotionList.vue"
 
 import type { DateGroup, VideoDynamicCard } from "../domain/types"
-import {
-  animateGridReflow,
-  captureCardRects,
-  fadeSlideIn,
-  motionEnabled,
-  resetCardLeaveStyles,
-  type CardLeaveVariant,
-} from "../utils/motion"
+import type { CardLeaveVariant } from "../utils/motion"
 import VideoCard from "./VideoCard.vue"
 import type { TranscriberCardState } from "../store/transcriber"
 
@@ -65,93 +59,19 @@ const emit = defineEmits<{
   (event: "enter-complete", dynamicId: string): void
 }>()
 
-const groupRef = ref<HTMLElement | null>(null)
-const knownCardIds = ref<string[]>([])
 
 const displayCount = computed(() => {
   const finalCount = props.finalCountMap[props.group.key]
   return typeof finalCount === "number" ? finalCount : props.group.items.length
 })
 
-function finishLeave(htmlEl: HTMLElement, dynamicId: string, done: () => void): void {
-  const listEl = htmlEl.parentElement
-  const beforeRects = listEl ? captureCardRects(listEl, htmlEl) : null
-
-  resetCardLeaveStyles(htmlEl)
-  done()
-
-  const notifyComplete = (): void => {
-    if (dynamicId) {
-      emit("leave-complete", { dynamicId, groupKey: props.group.key })
-    }
-  }
-
-  if (listEl && beforeRects && beforeRects.size > 0) {
-    void nextTick(() => {
-      animateGridReflow(listEl, beforeRects, notifyComplete)
-    })
-    return
-  }
-
-  notifyComplete()
+function onLeaveComplete(el: Element): void {
+  const dynamicId = (el as HTMLElement).dataset.dynamicId
+  if (dynamicId) emit("leave-complete", { dynamicId, groupKey: props.group.key })
 }
 
-function onLeave(el: Element, done: () => void): void {
-  const htmlEl = el as HTMLElement
-  const dynamicId = htmlEl.dataset.dynamicId ?? ""
-
-  // The card itself leaves immediately; the single grid reflow below carries
-  // the state change without drawing attention to the dismissed item.
-  finishLeave(htmlEl, dynamicId, done)
+function onEnterComplete(el: Element): void {
+  const dynamicId = (el as HTMLElement).dataset.dynamicId
+  if (dynamicId) emit("enter-complete", dynamicId)
 }
-
-function animateFillInCards(items: VideoDynamicCard[]): void {
-  if (!motionEnabled() || items.length === 0 || !groupRef.value) {
-    for (const item of items) {
-      emit("enter-complete", item.dynamicId)
-    }
-    return
-  }
-
-  void nextTick(() => {
-    if (!groupRef.value) {
-      return
-    }
-    let pending = items.length
-    const finishOne = (dynamicId: string): void => {
-      emit("enter-complete", dynamicId)
-      pending -= 1
-    }
-
-    for (const [index, item] of items.entries()) {
-      const cardEl = groupRef.value.querySelector<HTMLElement>(`[data-dynamic-id="${item.dynamicId}"]`)
-      if (!cardEl) {
-        finishOne(item.dynamicId)
-        continue
-      }
-      fadeSlideIn(cardEl, {
-        y: 6,
-        duration: 0.2,
-        delay: Math.min(index, 3) * 0.035,
-        onComplete: () => finishOne(item.dynamicId),
-      })
-    }
-  })
-}
-
-watch(
-  () => props.group.items,
-  (items) => {
-    const known = new Set(knownCardIds.value)
-    const fillInItems = items.filter((item) => !known.has(item.dynamicId))
-    knownCardIds.value = items.map((item) => item.dynamicId)
-
-    if (fillInItems.length > 0) {
-      animateFillInCards(fillInItems)
-    }
-  },
-  { flush: "post" },
-)
-
-knownCardIds.value = props.group.items.map((item) => item.dynamicId)
 </script>

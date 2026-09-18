@@ -326,7 +326,7 @@ export function readPersistedState(): PersistedInboxState {
   }
 }
 
-export function writePersistedState(patch: Partial<PersistedInboxState>): void {
+export function writePersistedState(patch: Partial<PersistedInboxState>): boolean {
   const payload = normalizeState({
     ...readPersistedState(),
     ...patch,
@@ -338,7 +338,8 @@ export function writePersistedState(patch: Partial<PersistedInboxState>): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope))
     localStorage.removeItem(LEGACY_DISLIKED_KEY)
+    return true
   } catch {
-    // Ignore write failures to avoid breaking runtime flow.
+    return false
   }
 }

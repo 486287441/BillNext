@@ -1,20 +1,14 @@
 <template>
   <section class="live-following-view" aria-labelledby="live-following-title">
-    <header class="live-following-hero">
-      <div>
-        <span class="live-following-eyebrow"><i></i> FOLLOWING LIVE</span>
-        <h1 id="live-following-title">关注的直播</h1>
-        <p>{{ heroDescription }}</p>
-      </div>
+    <PageHeader variant="live" title="关注的直播" title-id="live-following-title" :subtitle="heroDescription">
+      <template #actions>
       <div class="live-following-summary" aria-live="polite">
-        <strong>{{ rooms.length }}</strong>
-        <span>位 UP 主直播中</span>
-        <button type="button" :disabled="loading" title="刷新直播列表" @click="$emit('refresh')">
+        <button type="button" :disabled="loading" title="刷新直播列表" aria-label="刷新直播列表" @click="$emit('refresh')">
           <Icon icon="mingcute:refresh-2-line" :class="{ 'is-spinning': loading }" />
-          <span>刷新</span>
         </button>
       </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <div v-if="loading && !rooms.length" class="live-following-grid" aria-label="正在加载直播">
       <article v-for="index in 8" :key="index" class="live-card live-card-skeleton"><i></i><span></span><small></small></article>
@@ -34,12 +28,11 @@
       <button type="button" @click="$emit('refresh')">再看看</button>
     </div>
 
-    <TransitionGroup v-else class="live-following-grid" tag="div" name="live-card">
+    <MotionList v-else class="live-following-grid" tag="div" name="live-card">
       <article v-for="room in rooms" :key="room.roomId" class="live-card">
         <a class="live-card-cover" :href="room.url" target="_blank" rel="noopener noreferrer">
           <img v-if="room.cover" :src="coverUrl(room.cover)" :alt="room.title" loading="lazy" />
           <span v-else class="live-card-cover-fallback"><Icon icon="mingcute:live-line" /></span>
-          <span class="live-card-status"><i></i> 直播中</span>
           <span class="live-card-online"><Icon icon="mingcute:user-3-line" />{{ formatCount(room.online) }}</span>
           <span class="live-card-enter"><Icon icon="mingcute:play-fill" />进入直播间</span>
         </a>
@@ -50,15 +43,17 @@
           </a>
           <div>
             <a class="live-card-title" :href="room.url" target="_blank" rel="noopener noreferrer" :title="room.title">{{ room.title }}</a>
-            <p><a :href="spaceUrl(room.upMid)" target="_blank" rel="noopener noreferrer">{{ room.upName }}</a><span>{{ room.areaName }}</span></p>
+            <p><a :href="spaceUrl(room.upMid)" target="_blank" rel="noopener noreferrer">{{ room.upName }}</a></p>
           </div>
         </div>
       </article>
-    </TransitionGroup>
+    </MotionList>
   </section>
 </template>
 
 <script setup lang="ts">
+import PageHeader from "./PageHeader.vue"
+import MotionList from "./MotionList.vue"
 import { computed } from "vue"
 import { Icon } from "@iconify/vue"
 import type { LiveRoomCard } from "../domain/types"
@@ -69,7 +64,7 @@ defineEmits<{ (event: "refresh"): void }>()
 const heroDescription = computed(() => props.loading && props.rooms.length
   ? "正在确认谁刚刚开播…"
   : props.rooms.length
-    ? "不用在信息流里找，喜欢的直播都在这里。"
+    ? `${props.rooms.length} 位关注的 UP 主正在直播`
     : "开播的人会聚在这里，空闲时回来看看。")
 
 function coverUrl(url: string): string { return /hdslb\.com/i.test(url) ? `${url}@672w_378h_1c` : url }

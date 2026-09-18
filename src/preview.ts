@@ -9,3 +9,4 @@ import "./styles/home-layout.scss"
 createApp(PreviewApp).mount("#app")
 
 import "./styles/quiet-ui.scss"
+import "./styles/motion.scss"

@@ -1,22 +1,23 @@
 <template>
   <section class="checklist-view">
+    <header class="page-header"><div class="page-header-copy"><span class="page-header-eyebrow">CHECKLIST</span><h1>我的片单</h1></div></header>
     <div class="checklist-control-deck">
       <div class="checklist-tabs" role="tablist" aria-label="选择榜单">
         <button v-for="definition in definitions" :key="definition.kind" type="button" role="tab" :aria-selected="activeKind === definition.kind" :class="{ active: activeKind === definition.kind }" @click="selectKind(definition.kind)">
-          <span>{{ definition.shortTitle }}</span><small>TOP {{ definition.total }}</small>
+          <span>{{ definition.title }}</span>
         </button>
       </div>
 
       <div class="checklist-progress-card">
         <div class="checklist-progress-copy">
-          <span><strong>{{ activeDefinition.title }}</strong><small>{{ activeDefinition.description }}</small></span>
-          <b>{{ watchedCount }} <i>/ {{ activeDefinition.total }}</i></b>
+          <span><small>{{ activeDefinition.description }}</small></span>
+          <b>{{ watchedCount }} / {{ activeDefinition.total }} · {{ progressPercent }}%</b>
         </div>
         <div class="checklist-progress-track" role="progressbar" :aria-valuenow="watchedCount" aria-valuemin="0" :aria-valuemax="activeDefinition.total"><i :style="{ transform: `scaleX(${progressPercent / 100})` }"></i></div>
-        <div class="checklist-progress-foot"><span>{{ progressPercent }}% 完成</span><span>还差 {{ Math.max(0, activeDefinition.total - watchedCount) }} 部</span></div>
       </div>
 
       <div class="checklist-filter-toolbar" aria-label="清单筛选">
+        <div class="checklist-filter-options">
         <div class="checklist-filter-group">
           <span>观看</span>
           <div class="checklist-filter-segment" role="group" aria-label="观看状态">
@@ -24,7 +25,7 @@
           </div>
         </div>
         <div v-if="activeKind !== 'bangumi'" class="checklist-filter-group">
-          <span>B站</span>
+          <span>片源</span>
           <div class="checklist-filter-segment" role="group" aria-label="B站官方片源">
             <button v-for="option in presenceOptions" :key="option.value" type="button" :class="{ active: biliPresence === option.value }" :aria-pressed="biliPresence === option.value" @click="setBiliPresence(option.value)">{{ option.label }}</button>
           </div>
@@ -36,7 +37,8 @@
           </div>
         </div>
         <button v-if="hasAnyFilter" type="button" class="checklist-filter-reset" aria-label="清除全部筛选" @click="resetAllFilters"><Icon icon="mingcute:close-line" />重置</button>
-        <small>{{ visibleItems.length }} 部<span v-if="activeKind !== 'bangumi'"> · 已确认 {{ availabilityCount }}/{{ items.length }}</span></small>
+        </div>
+        <small role="status">{{ hasAnyFilter ? `筛选结果 ${visibleItems.length} 部` : `共 ${visibleItems.length} 部` }}</small>
       </div>
     </div>
 
@@ -51,36 +53,37 @@
     <div v-else-if="!visibleItems.length" class="checklist-empty">
       <Icon icon="mingcute:filter-line" /><strong>当前筛选下没有作品</strong><button type="button" @click="resetAllFilters">显示全部</button>
     </div>
-    <TransitionGroup v-else class="checklist-poster-grid" tag="div" name="checklist-card">
+    <MotionList v-else class="checklist-poster-grid" tag="div" name="checklist-card">
       <article v-for="item in visibleItems" :key="itemKey(item)" class="checklist-card" :class="{ watched: isWatched(item) }">
+        <div class="checklist-poster-wrap">
         <a class="checklist-poster" :href="posterUrl(item)" :aria-label="posterLinkLabel(item)" target="_blank" rel="noopener noreferrer">
           <img v-if="item.poster" :src="item.poster" :alt="item.title" loading="lazy" />
           <span v-else class="checklist-poster-fallback"><b>{{ titleInitial(item.title) }}</b><small>{{ item.originalTitle || activeDefinition.shortTitle }}</small></span>
           <strong class="checklist-rank"><i>#</i>{{ item.rank }}</strong>
           <span v-if="item.rating" class="checklist-score"><Icon icon="mingcute:star-fill" />{{ item.rating.toFixed(1) }}</span>
-          <span v-if="isWatched(item)" class="checklist-watched-stamp"><Icon icon="mingcute:check-fill" />已看</span>
         </a>
+        <button class="checklist-watch-toggle" type="button" :class="{ 'is-watched': isWatched(item) }" :aria-pressed="isWatched(item)" :aria-label="`${isWatched(item) ? '取消已看' : '标记看过'}：${item.title}`" :title="isWatched(item) ? '已看 · 点击取消' : '标记看过'" @click="toggleWatched(item)"><Icon :icon="isWatched(item) ? 'mingcute:check-fill' : 'mingcute:round-line'" /></button>
+        </div>
         <div class="checklist-card-body">
           <h2 :title="item.title">{{ item.title }}</h2>
           <p v-if="item.originalTitle && item.originalTitle !== item.title" :title="item.originalTitle">{{ item.originalTitle }}</p>
-          <div class="checklist-meta"><span v-if="item.year">{{ item.year }}</span><span v-if="item.director">导演：{{ item.director }}</span></div>
-          <div v-if="item.kind !== 'bangumi'" class="checklist-bili-status" :class="availabilityClass(item)" :title="availabilityFor(item)?.note || ''">
+          <div class="checklist-meta"><span v-if="item.year">{{ item.year }}</span><span v-if="item.director">{{ item.director }}</span></div>
+          <div v-if="item.kind !== 'bangumi'" class="checklist-bili-status" :class="availabilityClass(item)" :title="[completenessLabel(item), availabilityFor(item)?.note].filter(Boolean).join(' · ')">
             <span v-if="isChecking(item)"><Icon icon="mingcute:loading-3-line" />正在确认 B站片源</span>
             <template v-else-if="availabilityFor(item)?.status === 'available'">
-              <a :href="availabilityFor(item)?.biliUrl" target="_blank" rel="noopener noreferrer"><Icon icon="mingcute:play-circle-fill" />B站官方可看</a>
-              <small>{{ completenessLabel(item) }}</small>
+              <a :href="availabilityFor(item)?.biliUrl" target="_blank" rel="noopener noreferrer"><Icon icon="mingcute:play-circle-fill" />B站可看</a>
             </template>
             <span v-else-if="availabilityFor(item)?.status === 'unavailable'"><Icon icon="mingcute:close-circle-line" />B站暂无官方片源</span>
             <span v-else><Icon icon="mingcute:warning-line" />{{ availabilityFor(item) ? "确认失败，将自动重试" : "正在读取确认结果" }}</span>
           </div>
-          <button type="button" :aria-pressed="isWatched(item)" @click="toggleWatched(item)"><Icon :icon="isWatched(item) ? 'mingcute:check-circle-fill' : 'mingcute:add-circle-line'" />{{ isWatched(item) ? "已看过" : "标记看过" }}</button>
         </div>
       </article>
-    </TransitionGroup>
+    </MotionList>
   </section>
 </template>
 
 <script setup lang="ts">
+import MotionList from "./MotionList.vue"
 import { Icon } from "@iconify/vue"
 import { computed, onMounted, onUnmounted, ref } from "vue"
 import { CHECKLIST_DEFINITIONS, checklistFingerprint, checklistItemKey, type ChecklistAvailability, type ChecklistItem, type ChecklistKind } from "../domain/checklist"
@@ -144,10 +147,7 @@ const visibleItems = computed(() => items.value.filter((item) => {
   if (biliCompleteness.value !== "all" && availability?.completeness !== biliCompleteness.value) return false
   return true
 }))
-const availabilityCount = computed(() => items.value.filter((item) => {
-  const status = props.availabilityMap?.[itemKey(item)]
-  return status?.status === "available" || status?.status === "unavailable"
-}).length)
+
 
 function itemKey(item: ChecklistItem): string { return checklistItemKey(item.kind, item.id) }
 function isWatched(item: ChecklistItem): boolean { return watchedSet.value.has(itemKey(item)) }

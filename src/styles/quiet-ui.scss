@@ -286,6 +286,52 @@
   justify-content: start;
   align-items: start;
 }
+/* Desktop video grids share four columns; the featured module is independent. */
+@media (min-width: 861px) {
+  #billnext-inbox-root .home-showcase-more,
+  #billnext-inbox-root .group-list,
+  #billnext-inbox-root .home-video-grid:not(.layout-list),
+  #billnext-inbox-root .history-period-list,
+  #billnext-inbox-root .live-following-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  #billnext-inbox-root .history-period-list {
+    gap: var(--layout-row-gap) var(--layout-column-gap);
+    align-items: start;
+  }
+  #billnext-inbox-root .history-row {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    align-content: start;
+    min-width: 0;
+    min-height: 0;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+  #billnext-inbox-root .history-row-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    font-size: var(--video-title-size);
+    font-weight: var(--video-title-weight);
+    line-height: var(--video-title-leading);
+    height: calc(var(--video-title-leading) * 2);
+  }
+  #billnext-inbox-root .history-row-copy { padding-right: 36px; }
+  #billnext-inbox-root .history-row-meta {
+    overflow: hidden;
+    gap: 6px;
+    font-size: var(--video-meta-size);
+    line-height: var(--video-meta-leading);
+  }
+  #billnext-inbox-root .history-row-rewatch { position: absolute; right: 0; bottom: 0; }
+}
 .group-block { margin-bottom: var(--layout-section-gap); }
 .group-block h2 { justify-content: flex-start; text-align: left; }
 .home-showcase { gap: var(--home-section-gap); }
@@ -371,3 +417,420 @@
   #billnext-inbox-root .workspace-toolbar { transition: none; }
   #billnext-inbox-root .video-card .video-cover { transition: none; transform: none; }
 }
+
+/* Library headings stay in normal flow, like the anime page heading. */
+#billnext-inbox-root .library-header {
+  position: static;
+  top: auto;
+  z-index: auto;
+  align-items: flex-end;
+  padding: 20px 8px 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--bn-page);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: none;
+  opacity: 1;
+  transition: none;
+}
+#billnext-inbox-root .library-header h1 {
+  margin: 10px 0 8px;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+  color: var(--bn-text);
+}
+#billnext-inbox-root .library-kicker { font-size: 12px; font-weight: 600; letter-spacing: .12em; color: color-mix(in srgb, var(--bn-blue) 45%, var(--bn-text-2)); }
+#billnext-inbox-root .library-header p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--bn-text-2); }
+#billnext-inbox-root .library-header .history-today-summary {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Live and anime use the shared accent; state names carry the distinction. */
+#billnext-inbox-root .live-following-eyebrow,
+#billnext-inbox-root .live-card-enter,
+#billnext-inbox-root .live-card-title:hover {
+  color: var(--bn-blue);
+}
+#billnext-inbox-root .live-following-eyebrow i {
+  background: var(--bn-blue);
+  box-shadow: 0 0 0 4px var(--bn-blue-soft);
+}
+#billnext-inbox-root .live-card-status {
+  background: var(--bn-blue);
+  border-color: transparent;
+  color: #fff;
+}
+#billnext-inbox-root .live-card:hover,
+#billnext-inbox-root .anime-rich-card.has-update {
+  border-color: color-mix(in srgb, var(--bn-blue) 35%, var(--bn-rule));
+}
+#billnext-inbox-root .live-card-cover-fallback {
+  background: var(--bn-content);
+  color: var(--bn-blue);
+}
+#billnext-inbox-root .live-following-state.is-error .live-state-icon {
+  background: var(--bn-content);
+  color: var(--bn-text-2);
+}
+#billnext-inbox-root .anime-new-badge,
+#billnext-inbox-root .anime-status-badge.is-airing {
+  background: var(--bn-blue);
+  color: #fff;
+  box-shadow: none;
+}
+#billnext-inbox-root .anime-status-badge.is-upcoming {
+  background: var(--bn-content);
+  color: var(--bn-text-2);
+}
+#billnext-inbox-root .anime-latest-info > span.is-update,
+#billnext-inbox-root .anime-delete-button:hover {
+  color: var(--bn-blue);
+}
+#billnext-inbox-root .anime-progress-track i { background: color-mix(in srgb, var(--bn-blue) 55%, var(--bn-content)); }
+#billnext-inbox-root .anime-progress-track.is-completed i { background: color-mix(in srgb, var(--bn-text-3) 45%, var(--bn-content)); }
+#billnext-inbox-root .anime-match-error,
+#billnext-inbox-root .anime-add-error { color: var(--bn-text-2); }
+
+/* Anime remains a management library: one primary action, quiet secondary tools. */
+#billnext-inbox-root .anime-rich-card,
+#billnext-inbox-root .anime-rich-card.has-update {
+  position: relative;
+  overflow: visible;
+  border: 1px solid var(--bn-rule);
+  border-radius: var(--radius-large);
+  background: var(--bn-card);
+  box-shadow: none;
+}
+#billnext-inbox-root .anime-rich-card:hover {
+  border-color: color-mix(in srgb, var(--bn-blue) 28%, transparent);
+  box-shadow: none;
+  transform: none;
+}
+#billnext-inbox-root .anime-rich-card:has(.anime-manage[open]) { z-index: 5; }
+#billnext-inbox-root .anime-poster { border-radius: var(--radius-large) 0 0 var(--radius-large); }
+#billnext-inbox-root .anime-cover-placeholder { display: grid; height: 100%; place-content: center; padding: 12px; text-align: center; color: var(--bn-text-3); background: var(--bn-content); font-size: 12px; line-height: 1.8; }
+#billnext-inbox-root .anime-cover-placeholder small { overflow-wrap: anywhere; }
+#billnext-inbox-root .anime-cover-placeholder button { margin-top: 8px; padding: 6px 10px; border: 0; border-radius: var(--radius-small); color: var(--bn-blue); background: var(--bn-blue-soft); cursor: pointer; }
+#billnext-inbox-root .anime-rich-body { padding: 20px; }
+#billnext-inbox-root .anime-rich-heading > div { min-width: 0; }
+#billnext-inbox-root .anime-rich-heading h2 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+#billnext-inbox-root .anime-progress-line {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: var(--video-meta-size);
+  line-height: var(--video-meta-leading);
+  color: var(--bn-text-3);
+}
+.anime-air-status.is-airing { color: var(--bn-blue); }
+.anime-air-status.is-airing::before { content: "●"; margin-right: 5px; font-size: 8px; vertical-align: 1px; }
+#billnext-inbox-root .anime-progress-track { height: 4px; margin-top: 12px; background: var(--bn-content); }
+#billnext-inbox-root .anime-new-badge {
+  padding: 3px 6px;
+  border-radius: var(--radius-small);
+  font-weight: 600;
+  font-size: 10px;
+  box-shadow: none;
+}
+#billnext-inbox-root .anime-latest-info {
+  gap: 5px 8px;
+  padding: 0;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+#billnext-inbox-root .anime-latest-info > span { color: var(--bn-text-3); font-weight: 500; }
+#billnext-inbox-root .anime-latest-info > span.is-update { color: var(--bn-blue); }
+#billnext-inbox-root .anime-latest-info > strong { white-space: normal; font-weight: 500; font-size: 14px; line-height: 20px; }
+#billnext-inbox-root .anime-latest-info > small { color: var(--bn-text-3); font-weight: 400; line-height: 18px; }
+#billnext-inbox-root .anime-rich-actions .anime-watch-button {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: var(--bn-blue-soft);
+  color: var(--bn-blue);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: none;
+}
+#billnext-inbox-root .anime-rich-actions .anime-watch-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bn-blue) 18%, var(--bn-card));
+}
+.anime-manage { position: relative; flex: none; }
+.anime-manage summary {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  line-height: 1;
+  display: grid;
+  width: 32px;
+  height: 28px;
+  place-items: center;
+  list-style: none;
+  border-radius: var(--radius-small);
+  color: var(--bn-text-2);
+  cursor: pointer;
+  font-weight: 600;
+}
+.anime-manage summary::-webkit-details-marker { display: none; }
+.anime-manage summary::marker { content: ""; }
+.anime-manage summary::before, .anime-manage summary::after { content: none; }
+.anime-manage summary svg { display: block; }
+#billnext-inbox-root .anime-watch-button:disabled { opacity: .6; cursor: wait; }
+.anime-manage summary:hover, .anime-manage[open] summary { background: var(--bn-content); }
+.anime-manage-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 6;
+  display: grid;
+  width: 144px;
+  padding: 6px;
+  border: 1px solid var(--bn-rule);
+  border-radius: var(--radius-medium);
+  background: var(--bn-card);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+}
+.anime-manage-panel :is(a, button) {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--bn-text-2);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.anime-manage-panel :is(a, button):hover { background: var(--bn-content); color: var(--bn-blue); }
+.anime-manage-panel .anime-manage-remove { margin-top: 4px; border-top: 1px solid var(--bn-rule); border-radius: 0; }
+.anime-manage-panel button:disabled { opacity: .5; cursor: default; }
+.anime-manage :is(summary, a, button):focus-visible { outline: 2px solid var(--bn-blue); outline-offset: 2px; }
+
+/* Live browsing uses the same unboxed cover + information treatment as video. */
+#billnext-inbox-root .live-following-hero { min-height: 0; padding: 24px 0; border: 0; }
+#billnext-inbox-root .live-following-hero h1 { display: flex; align-items: baseline; gap: 18px; }
+#billnext-inbox-root .live-following-hero h1 small { color: var(--bn-text-3); font-size: 16px; font-weight: 400; letter-spacing: 0; }
+#billnext-inbox-root .live-following-summary { display: block; }
+#billnext-inbox-root .live-following-summary button { width: 32px; height: 32px; margin: 0; padding: 0; background: transparent; border: 0; border-radius: var(--radius-small); font-size: 18px; }
+#billnext-inbox-root .live-following-summary button:hover { background: var(--bn-content); }
+#billnext-inbox-root .live-following-grid { gap: var(--layout-row-gap) var(--layout-column-gap); padding-top: 0; }
+#billnext-inbox-root .live-card,
+#billnext-inbox-root .live-card:hover {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+#billnext-inbox-root .live-card-cover { border-radius: var(--radius-medium); }
+#billnext-inbox-root .live-card-info { min-height: 0; padding: 10px 0 0; }
+#billnext-inbox-root .live-card-title { font-size: var(--video-title-size); line-height: var(--video-title-leading); font-weight: var(--video-title-weight); }
+#billnext-inbox-root .live-card-info p { color: var(--bn-text-3); font-size: var(--video-meta-size); line-height: var(--video-meta-leading); }
+#billnext-inbox-root .live-card-info p a { color: inherit; }
+#billnext-inbox-root .live-card-info p a:hover { color: var(--bn-blue); }
+#billnext-inbox-root .live-card-status { height: 19px; padding: 0 6px; border-radius: var(--radius-small); background: rgb(0 0 0 / 35%); box-shadow: none; font-size: 10px; font-weight: 400; }
+#billnext-inbox-root .live-card-status i { width: 4px; height: 4px; animation: none; }
+#billnext-inbox-root .live-card-online { color: #fff; font-size: 12px; background: rgb(0 0 0 / 66%); }
+
+/* Library controls belong to their page heading rather than the global rail. */
+#billnext-inbox-root .inbox-shell.library-active { padding-top: 24px; }
+#billnext-inbox-root .library-view { gap: 16px; }
+#billnext-inbox-root .library-header { padding: 8px 0 0; }
+.library-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--bn-rule);
+}
+.library-history-summary { margin: 0; color: var(--bn-text-3); font-size: 13px; line-height: 20px; }
+.library-history-summary > span { margin-inline: 5px; }
+#billnext-inbox-root .workspace-toolbar.is-inline {
+  position: relative;
+  inset: auto;
+  flex: 1 1 320px;
+  width: 100%;
+  max-width: 728px;
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
+}
+#billnext-inbox-root .library-controls .workspace-toolbar.is-inline { flex: none; margin: 0; }
+#billnext-inbox-root .library-folders {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+#billnext-inbox-root .library-folders button {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--bn-text-2);
+  box-shadow: none;
+  font-weight: 500;
+}
+#billnext-inbox-root .library-folders button:hover { background: var(--bn-content); }
+#billnext-inbox-root .library-folders button.active { background: var(--bn-blue-soft); color: var(--bn-blue); }
+#billnext-inbox-root .library-folders.has-more-right { mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+#billnext-inbox-root .library-folders button small { background: transparent; color: var(--bn-text-2); opacity: 1; font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+#billnext-inbox-root .library-folders:focus-visible { outline: 2px solid var(--bn-blue); outline-offset: 2px; }
+#billnext-inbox-root .history-period-marker > span { width: 26px; height: 26px; margin-left: 6px; box-shadow: none; }
+#billnext-inbox-root .history-period-marker svg { width: 12px; height: 12px; }
+#billnext-inbox-root .history-period.is-today .history-period-marker > span { background: var(--bn-blue-soft); color: var(--bn-blue); box-shadow: none; }
+#billnext-inbox-root .history-timeline::before { background: color-mix(in srgb, var(--bn-blue) 25%, var(--bn-rule)); }
+#billnext-inbox-root .history-period-heading h2 { display: flex; align-items: baseline; gap: 12px; }
+#billnext-inbox-root .history-period-heading h2 small { color: var(--bn-text-3); font-size: 14px; font-weight: 400; letter-spacing: 0; }
+#billnext-inbox-root .history-row-copy { padding-right: 0; }
+/* Purpose pages share typography; feed pages do not render this header. */
+#billnext-inbox-root .page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 8px 0 0;
+}
+#billnext-inbox-root .page-header-copy { min-width: 0; }
+#billnext-inbox-root .page-header-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: color-mix(in srgb, var(--bn-blue) 45%, var(--bn-text-2));
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+#billnext-inbox-root .page-header-eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--bn-blue); }
+#billnext-inbox-root .page-header h1 {
+  margin: 10px 0 8px;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -.025em;
+  color: var(--bn-text);
+}
+#billnext-inbox-root .page-header-subtitle { margin: 0; font-size: 15px; line-height: 1.5; font-weight: 400; color: var(--bn-text-2); }
+#billnext-inbox-root .page-header-meta { margin-top: 20px; }
+#billnext-inbox-root .page-header-meta p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--bn-text-2); }
+#billnext-inbox-root .page-header-actions { flex: none; }
+#billnext-inbox-root .live-following-view > .page-header { margin-bottom: 24px; }
+/* History shares one content axis, with a narrow rail outside the video grid. */
+#billnext-inbox-root .library-view-history {
+  --history-rail-width: 36px;
+  width: min(1100px, 100%);
+  margin-inline: auto;
+}
+#billnext-inbox-root .library-view-history > .page-header,
+#billnext-inbox-root .library-view-history > .library-controls,
+#billnext-inbox-root .library-view-history > .library-state,
+#billnext-inbox-root .library-view-history > .history-stream-status {
+  margin-left: var(--history-rail-width);
+}
+#billnext-inbox-root .library-view-history .workspace-toolbar.is-inline { max-width: 900px; }
+#billnext-inbox-root .library-view-history .history-timeline { width: 100%; margin-inline: 0; }
+#billnext-inbox-root .library-view-history .history-period { grid-template-columns: var(--history-rail-width) minmax(0, 1fr); }
+#billnext-inbox-root .library-view-history .history-period-heading { padding-left: 0; padding-right: 0; }
+#billnext-inbox-root .library-view-history .history-period-list { padding-left: 0; }
+#billnext-inbox-root .library-view-history .history-period-marker > span {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin-left: 0;
+  border-width: 3px;
+}
+#billnext-inbox-root .library-view-history .history-timeline::before { left: 11px; top: 14px; }
+#billnext-inbox-root .library-view-history .history-timeline-cap { left: 6px; }
+/* Checklist-only presentation: posters lead, controls stay quiet. */
+#billnext-inbox-root .checklist-view .checklist-control-deck {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#billnext-inbox-root .checklist-view .checklist-tabs { display: flex; gap: 28px; padding: 0; border-radius: 0; background: transparent; border-bottom: 1px solid var(--bn-rule); overflow-x: auto; }
+#billnext-inbox-root .checklist-view .checklist-tabs button { flex: none; min-height: 42px; padding: 0 0 10px; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; box-shadow: none; }
+#billnext-inbox-root .checklist-view .checklist-tabs button.active { color: var(--bn-blue); border-bottom-color: var(--bn-blue); }
+#billnext-inbox-root .checklist-view .checklist-tabs span { font-size: 14px; font-weight: 500; }
+#billnext-inbox-root .checklist-view .checklist-progress-card { padding: 0; border: 0; gap: 12px; }
+#billnext-inbox-root .checklist-view .checklist-progress-copy strong { font-size: 20px; font-weight: 600; }
+#billnext-inbox-root .checklist-view .checklist-progress-copy small { font-size: 13px; line-height: 20px; }
+#billnext-inbox-root .checklist-view .checklist-progress-copy b { font-size: 14px; font-weight: 400; color: var(--bn-text-2); }
+#billnext-inbox-root .checklist-view .checklist-progress-track { height: 3px; background: var(--bn-content); }
+#billnext-inbox-root .checklist-view .checklist-progress-track i { background: color-mix(in srgb, var(--bn-blue) 55%, var(--bn-content)); box-shadow: none; }
+#billnext-inbox-root .checklist-view .checklist-filter-toolbar { align-items: flex-start; flex-direction: column; gap: 10px; padding-top: 0; border: 0; }
+#billnext-inbox-root .checklist-view .checklist-filter-options { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+#billnext-inbox-root .checklist-view .checklist-filter-group { width: auto; gap: 16px; justify-content: flex-start; }
+#billnext-inbox-root .checklist-view .checklist-filter-group > span { font-size: 13px; }
+#billnext-inbox-root .checklist-view .checklist-filter-segment { padding: 0; gap: 4px; background: transparent; }
+#billnext-inbox-root .checklist-view .checklist-filter-segment button { height: 32px; padding-inline: 12px; font-size: 13px; border-radius: var(--radius-small); }
+#billnext-inbox-root .checklist-view .checklist-filter-segment button.active { background: var(--bn-blue-soft); color: var(--bn-blue); box-shadow: none; }
+#billnext-inbox-root .checklist-view .checklist-filter-toolbar > small { width: auto; margin: 0; font-size: 12px; line-height: 20px; font-variant-numeric: tabular-nums; }
+#billnext-inbox-root .checklist-view .checklist-poster-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 28px 20px; }
+#billnext-inbox-root .checklist-view .checklist-card,
+#billnext-inbox-root .checklist-view .checklist-card:hover { overflow: visible; border: 0; background: transparent; box-shadow: none; transform: none; }
+#billnext-inbox-root .checklist-view .checklist-poster-wrap { position: relative; }
+#billnext-inbox-root .checklist-view .checklist-poster { border-radius: var(--radius-medium); background: var(--bn-content); }
+#billnext-inbox-root .checklist-view .checklist-card.watched .checklist-poster img { filter: none; }
+#billnext-inbox-root .checklist-view .checklist-rank,
+#billnext-inbox-root .checklist-view .checklist-score { border: 0; border-radius: var(--radius-small); background: rgb(0 0 0 / 60%); box-shadow: none; backdrop-filter: none; }
+#billnext-inbox-root .checklist-view .checklist-score svg { color: inherit; }
+#billnext-inbox-root .checklist-view .checklist-watch-toggle {
+  position: absolute; top: 8px; right: 8px; z-index: 3;
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border: 0; border-radius: 50%; background: rgb(0 0 0 / 38%); color: #fff; box-shadow: none;
+  opacity: 0; pointer-events: none; cursor: pointer; transition: opacity 140ms ease;
+}
+#billnext-inbox-root .checklist-view .checklist-watch-toggle svg { width: 18px; height: 18px; }
+#billnext-inbox-root .checklist-view .checklist-watch-toggle.is-watched,
+#billnext-inbox-root .checklist-view .checklist-card:hover .checklist-watch-toggle,
+#billnext-inbox-root .checklist-view .checklist-card:focus-within .checklist-watch-toggle { opacity: 1; pointer-events: auto; }
+#billnext-inbox-root .checklist-view :is(button, a):focus-visible { outline: 2px solid var(--bn-blue); outline-offset: 3px; }
+#billnext-inbox-root .checklist-view .checklist-card-body { min-height: 0; padding: 10px 0 0; }
+#billnext-inbox-root .checklist-view .checklist-card-body h2 { min-height: 40px; font-size: 14px; line-height: 20px; font-weight: 600; }
+#billnext-inbox-root .checklist-view .checklist-card-body > p { margin-top: 5px; font-size: 12px; line-height: 17px; color: var(--bn-text-3); }
+#billnext-inbox-root .checklist-view .checklist-meta { margin: 6px 0; font-size: 12px; line-height: 17px; color: var(--bn-text-2); }
+#billnext-inbox-root .checklist-view .checklist-bili-status { display: flex; min-height: 22px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--bn-text-3); }
+#billnext-inbox-root .checklist-view .checklist-bili-status > a { color: var(--bn-blue); }
+#billnext-inbox-root .checklist-view .checklist-bili-status > :is(a, span) { font-size: 12px; line-height: 20px; font-weight: 400; }

@@ -33,3 +33,4 @@ export function unmountInboxApp(container: HTMLElement): void {
 }
 
 import "../styles/quiet-ui.scss"
+import "../styles/motion.scss"

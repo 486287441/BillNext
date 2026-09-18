@@ -39,12 +39,14 @@
         </div>
       </div>
     </div>
+    <Transition name="motion-popover">
     <div v-if="actionsOpen" ref="contextMenuRef" class="video-actions-menu" role="group" aria-label="视频操作">
       <button v-if="actionMode === 'favorites'" type="button" :disabled="isPending" @click.stop="$emit('remove-favorite')">{{ isPending ? "处理中…" : "取消收藏" }}</button>
       <button v-if="actionMode === 'watchlater'" type="button" :disabled="isPending" @click.stop="$emit('remove-watch-later')">{{ isPending ? "处理中…" : "移出稍后再看" }}</button>
       <button v-if="showFollowControl && card.upMid" type="button" :disabled="isRelationPending || isRelationUnknown" @click.stop="$emit('toggle-follow')">{{ isRelationPending ? "处理中…" : isRelationUnknown ? "读取中…" : isFollowing ? "取消关注" : "关注" }}</button>
       <button v-if="actionMode === 'default'" class="video-negative-action" type="button" :disabled="isPending" @click.stop="$emit('dislike')">不想看</button>
     </div>
+    </Transition>
   </article>
 </template>
 
