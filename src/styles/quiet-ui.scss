@@ -144,7 +144,7 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.video-inline-actions button > span { font-size: 14px; }
+.video-inline-actions button > span[aria-hidden] { font-size: 14px; }
 .video-inline-actions button:hover:not(:disabled) { background: var(--bn-content); }
 .video-inline-actions button.video-help-action,
 .video-inline-actions button.is-saved { color: var(--bn-text-2); }
@@ -198,9 +198,26 @@
   outline-offset: 2px;
 }
 #billnext-inbox-root .video-card.is-home-featured .video-info-row {
-  position: relative;
-  padding: var(--home-cover-title-gap) 0 0;
-  background: transparent;
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
+  box-sizing: border-box;
+  min-height: 20%;
+  padding: 20px 72px 12px 16px;
+  border-radius: 0 0 var(--radius-medium) var(--radius-medium);
+  background: linear-gradient(transparent, rgb(0 0 0 / 65%));
+  pointer-events: none;
+}
+#billnext-inbox-root .video-card.is-home-featured .video-title { color: #fff; pointer-events: auto; }
+#billnext-inbox-root .video-card.is-home-featured .video-subtitle { color: rgb(255 255 255 / 85%); }
+#billnext-inbox-root .video-card.is-home-featured .video-publish-date { color: rgb(255 255 255 / 65%); }
+#billnext-inbox-root .video-card.is-home-featured .video-up { pointer-events: auto; }
+#billnext-inbox-root .video-card.is-home-featured .video-inline-actions button { color: #fff; }
+#billnext-inbox-root .video-card.is-home-featured .video-inline-actions button:hover:not(:disabled) { background: rgb(255 255 255 / 16%); }
+#billnext-inbox-root .video-card.is-home-compact .video-title {
+  height: 44px;
+  min-height: 44px;
+  line-height: 22px;
 }
 #billnext-inbox-root .video-card.is-home-compact .video-info-row {
   height: var(--home-secondary-row-height);
@@ -208,13 +225,50 @@
   align-items: stretch;
 }
 #billnext-inbox-root .video-card.is-home-compact .video-meta {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr) 24px;
   height: 100%;
 }
 #billnext-inbox-root .video-card.is-home-compact .video-meta-slot {
-  flex: 0 0 28px;
-  margin-top: auto;
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin-top: 0;
+}
+#billnext-inbox-root .video-card.is-home-compact .video-meta-slot .video-subtitle {
+  min-width: 0;
+  height: 24px;
+  opacity: 1;
+  pointer-events: auto;
+}
+#billnext-inbox-root .video-card.is-home-compact .video-inline-actions {
+  position: static;
+  height: 24px;
+  gap: 4px;
+}
+#billnext-inbox-root .video-card.is-home-compact:is(:hover, :focus-within) .video-inline-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+#billnext-inbox-root .video-card.is-home-compact .video-inline-actions button {
+  position: relative;
+  width: 28px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0;
+  gap: 0;
+}
+/* Keep the accessible action names while presenting compact icons. */
+.video-card.is-home-compact .video-action-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 #billnext-inbox-root .video-card.is-home-featured .video-meta-slot { margin-top: var(--home-title-meta-gap); }
 /* auto-fill retains empty tracks: a two-item day uses the same card width

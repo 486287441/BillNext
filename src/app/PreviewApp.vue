@@ -26,7 +26,7 @@
           />
         </div>
       </article>
-      <section v-else class="home-showcase" :class="{ 'is-compact-hero-preview': compactHeroPreview }">
+      <section v-else class="home-showcase">
         <div class="home-showcase-lead">
         <VideoCard
             v-for="card in visibleCards.slice(0, 1)"
@@ -44,6 +44,7 @@
             @help-read="startReading(card)"
             @dislike="hideCard(card)"
           />
+        <div class="home-showcase-side-frame">
         <TransitionGroup class="home-showcase-secondary" tag="div" name="home-card">
           <VideoCard
             v-for="card in visibleCards.slice(1, 4)"
@@ -62,6 +63,7 @@
             @dislike="hideCard(card)"
           />
         </TransitionGroup>
+        </div>
       </div>
         <div class="home-showcase-section-head"><h2>更多推荐</h2></div>
         <div class="home-showcase-more">
@@ -150,7 +152,6 @@ const cards = ref<VideoDynamicCard[]>(titles.map((title, index) => ({
   tag: ["娱乐", "知识", "娱乐", "知识", "知识"][index % 5],
 })))
 
-const compactHeroPreview = new URL(window.location.href).searchParams.get("hero") === "compact"
 const previewScreen = new URL(window.location.href).searchParams.get("screen")
 const previewTab = ref(previewScreen === "checklist" ? "checklist" : previewScreen === "home" ? "recommended" : "following")
 const watchedChecklistIds = ref<string[]>(["imdb:tt0111161", "imdb:tt0068646"])

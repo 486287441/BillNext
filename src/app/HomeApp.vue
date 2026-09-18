@@ -128,6 +128,7 @@
           @help-read="onHelpRead(card)"
           @dislike="onDislike(card)"
         />
+        <div class="home-showcase-side-frame">
         <TransitionGroup class="home-showcase-secondary" tag="div" name="home-card">
           <VideoCard
           v-for="card in leadCards.slice(1, 4)"
@@ -148,6 +149,7 @@
           @dislike="onDislike(card)"
         />
         </TransitionGroup>
+        </div>
       </div>
 
       <div v-if="moreCards.length" class="home-showcase-section-head">

@@ -2,12 +2,19 @@
    Shared card typography and interactions live in quiet-ui.scss. */
 .home-showcase {
   display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
   min-width: 0;
   gap: var(--home-section-gap);
 }
 .home-showcase-lead,
 .home-showcase-more {
   display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--layout-column-gap);
@@ -61,13 +68,45 @@
   align-content: start;
   gap: var(--home-secondary-row-gap);
 }
-.video-card.is-home-compact .video-meta { max-width: var(--home-secondary-text-max); }
+.video-card.is-home-compact .video-meta { width: 100%; max-width: none; }
+.video-card.is-home-compact .video-info-row { min-width: 0; width: 100%; }
+.home-showcase-secondary > .video-card { width: 100%; box-sizing: border-box; }
 .video-card.is-home-layout .video-meta-slot { margin-top: var(--home-title-meta-gap); }
-/* Preview-only comparison: about 5% less primary width, same content. */
-.is-compact-hero-preview { --home-primary-share: 53fr; --home-secondary-share: 47fr; }
+/* The hero alone establishes the desktop row height. The absolute side list
+   cannot enlarge it; its three equal-height items distribute the remaining space. */
+.home-showcase-side-frame { min-width: 0; }
 @media (min-width: 60rem) {
   .home-showcase-lead {
     grid-template-columns: minmax(0, var(--home-primary-share)) minmax(0, var(--home-secondary-share));
-    align-items: start;
+    align-items: stretch;
   }
+  .home-showcase-side-frame {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+  }
+  .home-showcase-secondary {
+    position: absolute;
+    inset: 0;
+    /* Size containment has no intrinsic height. Explicitly fill the grid cell:
+       the base align-self:start otherwise collapses the absolute container. */
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0;
+  }
+  .home-showcase-secondary .video-card.is-home-compact {
+    --home-side-item-height: min(var(--home-secondary-row-height), calc((100cqh - 32px) / 3));
+    flex: 0 0 var(--home-side-item-height);
+    height: var(--home-side-item-height);
+    grid-template-columns: calc(var(--home-side-item-height) * 16 / 9) minmax(0, 1fr);
+  }
+  .home-showcase-secondary { container-type: size; }
+  .home-showcase-secondary .video-card.is-home-compact .video-cover-wrap { height: 100%; }
+  #billnext-inbox-root .home-showcase-secondary .video-card.is-home-compact .video-info-row { height: 100%; }
 }

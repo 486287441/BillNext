@@ -32,9 +32,9 @@
           <span aria-hidden="true">·</span><span class="video-publish-date">{{ publishLabel }}</span>
         </div>
         <div class="video-inline-actions" role="group" aria-label="快捷操作">
-          <button v-if="actionMode === 'default'" type="button" :class="{ 'is-saved': isWantWatched }" :disabled="isPending" @click.stop="onWantWatchClick"><span aria-hidden="true">{{ isWantWatched ? '★' : '☆' }}</span>{{ isPending ? "处理中…" : isWantWatched ? "已想看" : "想看" }}</button>
+          <button v-if="actionMode === 'default'" type="button" :class="{ 'is-saved': isWantWatched }" :title="isPending ? '处理中…' : isWantWatched ? '已想看' : '想看'" :disabled="isPending" @click.stop="onWantWatchClick"><span aria-hidden="true">{{ isWantWatched ? '★' : '☆' }}</span><span class="video-action-label">{{ isPending ? "处理中…" : isWantWatched ? "已想看" : "想看" }}</span></button>
           <button v-if="actionMode === 'watchlater'" type="button" :disabled="isPending" @click.stop="$emit('add-favorite')"><span aria-hidden="true">☆</span>收藏</button>
-          <button class="video-help-action" type="button" :disabled="isPending || Boolean(transcriberState)" @click="helpMeRead"><span aria-hidden="true">✦</span>{{ helpReadLabel }}</button>
+          <button class="video-help-action" type="button" :title="helpReadLabel" :disabled="isPending || Boolean(transcriberState)" @click="helpMeRead"><span aria-hidden="true">✦</span><span class="video-action-label">{{ helpReadLabel }}</span></button>
         </div>
         </div>
       </div>
