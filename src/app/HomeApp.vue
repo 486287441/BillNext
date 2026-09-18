@@ -109,9 +109,9 @@
     </section>
 
     <section v-else-if="showHomeVideoFeed" class="home-showcase">
-      <TransitionGroup class="home-showcase-lead" tag="div" name="home-card">
+      <div class="home-showcase-lead">
         <VideoCard
-          v-for="(card, index) in leadCards"
+          v-for="card in leadCards.slice(0, 1)"
           :key="card.dynamicId"
           :card="card"
           :pending-map="decision.pendingMap"
@@ -121,14 +121,34 @@
           :following-up-map="decision.followingUpMap"
           :relation-pending-mid="decision.relationPendingMid"
           :transcriber-state="transcriber.getForCard(card)"
-          :layout-variant="index === 0 ? 'featured' : 'compact'"
+          layout-variant="featured"
           home-highlights
           home-layout
           @want-watch="onWantWatch(card)"
           @help-read="onHelpRead(card)"
           @dislike="onDislike(card)"
         />
-      </TransitionGroup>
+        <TransitionGroup class="home-showcase-secondary" tag="div" name="home-card">
+          <VideoCard
+          v-for="card in leadCards.slice(1, 4)"
+          :key="card.dynamicId"
+          :card="card"
+          :pending-map="decision.pendingMap"
+          :want-watch-map="wantWatchMap"
+          :open-video-on-want-watch="openVideoOnWantWatch"
+          :hover-autoplay="hoverAutoplay"
+          :following-up-map="decision.followingUpMap"
+          :relation-pending-mid="decision.relationPendingMid"
+          :transcriber-state="transcriber.getForCard(card)"
+          layout-variant="compact"
+          home-highlights
+          home-layout
+          @want-watch="onWantWatch(card)"
+          @help-read="onHelpRead(card)"
+          @dislike="onDislike(card)"
+        />
+        </TransitionGroup>
+      </div>
 
       <div v-if="moreCards.length" class="home-showcase-section-head">
         <h2>更多推荐</h2>

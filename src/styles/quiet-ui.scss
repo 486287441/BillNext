@@ -1,0 +1,319 @@
+/* Shared final presentation layer. Layout and feed behavior remain page-owned. */
+#billnext-inbox-root {
+  --bn-metadata: var(--video-meta-color);
+  --bn-date: #9A9AA0;
+  --bn-negative: #C93632;
+  --bn-blue: var(--color-accent);
+  --bn-blue-soft: var(--color-accent-soft);
+  --bn-page: var(--color-paper);
+  --bn-content: var(--color-paper-2);
+  --bn-card: var(--surface);
+  --bn-text: var(--color-ink);
+  --bn-text-2: var(--color-ink-2);
+  --bn-text-3: var(--color-muted);
+  --bn-rule: var(--color-rule);
+  --bn-glass-edge: var(--bn-rule);
+  --bn-glass-thin: var(--bn-card);
+  --bn-glass-medium: var(--bn-card);
+  --bn-glass-deep: var(--bn-card);
+  --billnext-theme: var(--bn-blue);
+  --billnext-theme-hover: var(--color-accent-hover);
+  --billnext-theme-soft: var(--bn-blue-soft);
+  --billnext-bg: var(--bn-page);
+  --billnext-content: var(--bn-card);
+  --billnext-content-solid: var(--bn-card);
+  --billnext-elevated: var(--bn-card);
+  --billnext-text-1: var(--bn-text);
+  --billnext-text-2: var(--bn-text-2);
+  --billnext-text-3: var(--bn-text-3);
+  --billnext-border: var(--bn-rule);
+  background: var(--bn-page);
+}
+#billnext-inbox-root.is-dark {
+  --bn-metadata: #98989F;
+  --bn-date: #898990;
+  --bn-negative: #FF6961;
+  --bn-page: var(--color-paper-dark);
+  --bn-content: var(--color-paper-2-dark);
+  --bn-card: #242426;
+  --bn-text: var(--color-ink-dark);
+  --bn-text-2: var(--color-ink-2-dark);
+  --bn-text-3: var(--color-muted-dark);
+  --bn-rule: rgb(255 255 255 / 8%);
+}
+
+#billnext-inbox-root .video-card {
+  position: relative;
+  overflow: visible;
+  border: 0;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+#billnext-inbox-root .video-card :is(.video-cover-wrap, .video-cover-link, .video-cover) {
+  border-radius: var(--radius-medium);
+}
+.video-cover-wrap { background: var(--bn-content); }
+#billnext-inbox-root .video-card .video-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  padding: 10px 0 0;
+}
+#billnext-inbox-root .video-card .video-meta { flex: 1; min-width: 0; padding: 0; }
+#billnext-inbox-root .video-card .video-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  height: auto;
+  min-height: 0;
+  font-size: var(--video-title-size);
+  line-height: var(--video-title-leading);
+  font-weight: var(--video-title-weight);
+  color: var(--bn-text);
+}
+#billnext-inbox-root .video-card .video-subtitle {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: var(--video-meta-size);
+  line-height: var(--video-meta-leading);
+  color: var(--bn-metadata);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.video-subtitle > span { flex: none; }
+#billnext-inbox-root .video-home-badge {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: var(--radius-small);
+  background: var(--bn-blue-soft);
+  color: var(--bn-blue);
+  font-size: var(--video-meta-size);
+  line-height: var(--video-meta-leading);
+  font-weight: 500;
+}
+#billnext-inbox-root .video-card .has-home-badge .video-up { flex: 0 1 auto; min-width: 3em; }
+#billnext-inbox-root .video-card .has-home-badge > span:not(.video-home-badge) { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
+
+.video-publish-date { color: var(--bn-date); }
+#billnext-inbox-root .video-card .video-up {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: inherit;
+}
+/* Both states share one fixed-height row, so hover never moves the grid. */
+.video-meta-slot { position: relative; height: 28px; margin-top: 5px; }
+#billnext-inbox-root .video-card .video-meta-slot .video-subtitle {
+  height: 28px;
+  margin-top: 0;
+  align-items: center;
+  transition: opacity 120ms ease;
+}
+.video-inline-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.video-inline-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--bn-text-2);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.video-inline-actions button > span { font-size: 14px; }
+.video-inline-actions button:hover:not(:disabled) { background: var(--bn-content); }
+.video-inline-actions button.video-help-action,
+.video-inline-actions button.is-saved { color: var(--bn-text-2); }
+.video-inline-actions button:disabled { opacity: .5; cursor: default; }
+.video-card:is(:hover, :focus-within) .video-inline-actions { opacity: 1; pointer-events: auto; }
+#billnext-inbox-root .video-card:is(:hover, :focus-within) .video-subtitle { opacity: 0; pointer-events: none; }
+/* Keep the creator link visible when reached through keyboard navigation. */
+#billnext-inbox-root .video-card .video-meta-slot:has(.video-up:focus-visible) .video-subtitle { opacity: 1; pointer-events: auto; }
+.video-meta-slot:has(.video-up:focus-visible) .video-inline-actions { opacity: 0; pointer-events: none; }
+#billnext-inbox-root .video-card.has-context-menu { z-index: 6; }
+.video-actions-menu {
+  position: absolute;
+  top: auto;
+  bottom: 0;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 108px;
+  max-width: calc(100% - 16px);
+  padding: 6px;
+  border: 1px solid var(--bn-rule);
+  border-radius: var(--radius-medium);
+  background: var(--bn-card);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+}
+.video-actions-menu button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--bn-text-2);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+.video-actions-menu button:hover:not(:disabled) { background: var(--bn-content); color: var(--bn-text); }
+.video-actions-menu button.video-help-action { color: var(--bn-blue); }
+.video-actions-menu button.video-negative-action {
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--bn-rule);
+  border-radius: 0 0 var(--radius-small) var(--radius-small);
+}
+.video-actions-menu button.video-negative-action:hover:not(:disabled) {
+  color: var(--bn-negative);
+}
+.video-actions-menu button:disabled { opacity: .5; cursor: default; }
+#billnext-inbox-root :is(.video-inline-actions button, .video-actions-menu button):focus-visible {
+  outline: 2px solid var(--bn-blue);
+  outline-offset: 2px;
+}
+#billnext-inbox-root .video-card.is-home-featured .video-info-row {
+  position: relative;
+  padding: var(--home-cover-title-gap) 0 0;
+  background: transparent;
+}
+#billnext-inbox-root .video-card.is-home-compact .video-info-row {
+  height: var(--home-secondary-row-height);
+  padding: 0;
+  align-items: stretch;
+}
+#billnext-inbox-root .video-card.is-home-compact .video-meta {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+#billnext-inbox-root .video-card.is-home-compact .video-meta-slot {
+  flex: 0 0 28px;
+  margin-top: auto;
+}
+#billnext-inbox-root .video-card.is-home-featured .video-meta-slot { margin-top: var(--home-title-meta-gap); }
+/* auto-fill retains empty tracks: a two-item day uses the same card width
+   and left edge as a full day, rather than stretching the two cards. */
+#billnext-inbox-root .dynamic-inbox-content {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+#billnext-inbox-root .group-list,
+#billnext-inbox-root .home-showcase-more,
+#billnext-inbox-root .home-video-grid:not(.layout-list) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--layout-grid-min)), 1fr));
+  gap: var(--layout-row-gap) var(--layout-column-gap);
+  justify-content: start;
+  align-items: start;
+}
+.group-block { margin-bottom: var(--layout-section-gap); }
+.group-block h2 { justify-content: flex-start; text-align: left; }
+.home-showcase { gap: var(--home-section-gap); }
+.home-showcase-lead { gap: var(--home-column-gap); }
+.home-showcase-section-head { margin-block-end: calc(var(--layout-heading-gap) - var(--home-section-gap)); }
+.home-showcase-section-head h2,
+.group-block h2 { font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -.02em; color: var(--bn-text); }
+.group-block h2 { margin-bottom: var(--layout-heading-gap); }
+.group-block h2 small { font-size: 14px; }
+
+#billnext-inbox-root .workspace-toolbar {
+  transition: transform 180ms ease, opacity 140ms ease;
+  max-width: 728px;
+  height: 36px;
+  padding: 0;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 36px 36px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+#billnext-inbox-root .workspace-toolbar.is-scroll-hidden {
+  transform: translateY(calc(-100% - 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+#billnext-inbox-root .workspace-toolbar.is-search-only { grid-template-columns: minmax(0, 1fr); }
+.workspace-toolbar-divider, .workspace-search-scope { display: none; }
+#billnext-inbox-root .workspace-global-search {
+  grid-template-columns: 18px minmax(0, 1fr);
+  height: 36px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-medium);
+  background: var(--bn-content);
+}
+#billnext-inbox-root .workspace-global-search input { height: 36px; font-size: 13px; }
+#billnext-inbox-root .workspace-global-search:focus-within { outline: 2px solid var(--bn-blue); outline-offset: 2px; }
+.workspace-filter-wrap, .workspace-filter-button, .workspace-refresh-button { width: 36px; }
+.workspace-filter-button, .workspace-refresh-button { height: 36px; border-radius: var(--radius-small); }
+.workspace-filter-popover { border-radius: var(--radius-large); }
+.workspace-filter-input { background: var(--bn-content); border-radius: var(--radius-medium); }
+
+#billnext-inbox-root .billnext-sidebar {
+  border-color: var(--bn-rule);
+  border-radius: var(--radius-large);
+  background: var(--bn-card);
+  box-shadow: none;
+}
+.billnext-primary-nav, .billnext-secondary-nav { gap: 8px; }
+.billnext-primary-nav a, .billnext-secondary-nav a, .billnext-secondary-nav button {
+  min-height: 36px;
+  border-radius: var(--radius-small);
+}
+.billnext-primary-nav svg, .billnext-secondary-nav svg { width: 18px; height: 18px; }
+.billnext-primary-nav a:hover, .billnext-secondary-nav a:hover, .billnext-secondary-nav button:hover { background: var(--bn-content); }
+.billnext-primary-nav a.active, .billnext-secondary-nav a.active { background: var(--bn-blue-soft); color: var(--bn-blue); }
+@media (min-width: 861px) {
+  .inbox-shell:not(.dynamic-feed-embedded) {
+    --layout-rail-space: calc(var(--layout-sidebar-inset) + var(--layout-sidebar-expanded-width));
+    --layout-content-inset: max(var(--layout-page-padding), calc((100vw - var(--layout-rail-space) - var(--layout-content-max)) / 2));
+    padding-left: calc(var(--layout-rail-space) + var(--layout-content-inset));
+    padding-right: var(--layout-content-inset);
+  }
+  .inbox-shell.sidebar-collapsed:not(.dynamic-feed-embedded) {
+    --layout-rail-space: calc(var(--layout-sidebar-inset) + var(--layout-sidebar-width));
+  }
+  #billnext-inbox-root .billnext-sidebar { width: var(--layout-sidebar-expanded-width); }
+  #billnext-inbox-root .billnext-sidebar.is-collapsed { width: var(--layout-sidebar-width); padding-inline: 9px; }
+  .billnext-sidebar.is-collapsed .billnext-collapse-toggle { right: 13px; }
+  #billnext-inbox-root .workspace-toolbar {
+    left: calc(var(--layout-rail-space) + var(--layout-content-inset));
+    right: auto;
+    width: calc(100vw - var(--layout-rail-space) - var(--layout-content-inset) * 2);
+  }
+  .inbox-shell:not(.dynamic-feed-embedded):not(.checklist-active):not(.live-active) { padding-top: 88px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .video-inline-actions,
+  #billnext-inbox-root .video-card .video-meta-slot .video-subtitle,
+  #billnext-inbox-root .workspace-toolbar { transition: none; }
+  #billnext-inbox-root .video-card .video-cover { transition: none; transform: none; }
+}

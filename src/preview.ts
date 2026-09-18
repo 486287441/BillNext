@@ -7,3 +7,5 @@ import "./styles/billnext-theme.scss"
 import "./styles/home-layout.scss"
 
 createApp(PreviewApp).mount("#app")
+
+import "./styles/quiet-ui.scss"

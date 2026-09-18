@@ -31,3 +31,5 @@ export function unmountInboxApp(container: HTMLElement): void {
     appInstances.delete(container)
   }
 }
+
+import "../styles/quiet-ui.scss"

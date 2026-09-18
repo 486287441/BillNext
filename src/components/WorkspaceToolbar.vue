@@ -1,5 +1,5 @@
 <template>
-  <header class="workspace-toolbar" :class="{ 'is-search-only': searchOnly }" aria-label="全局工具栏">
+  <header ref="toolbarRef" class="workspace-toolbar" :class="{ 'is-search-only': searchOnly, 'is-scroll-hidden': toolbarHidden }" aria-label="全局工具栏" @focusin="toolbarHidden = false">
     <form class="workspace-global-search" :class="{ 'is-scoped-search': isScopedSearch }" role="search" @submit.prevent="search">
       <Icon icon="mingcute:search-2-line" />
       <span v-if="isScopedSearch" class="workspace-search-scope">{{ searchScopeLabel }}</span>
@@ -76,6 +76,31 @@ const emit = defineEmits<{
   (event: "refresh"): void
 }>()
 
+const toolbarRef = ref<HTMLElement | null>(null)
+const toolbarHidden = ref(false)
+let scrollRoot: HTMLElement | null = null
+let lastScrollTop = 0
+let directionDistance = 0
+
+function onFeedScroll(): void {
+  const top = Math.max(0, scrollRoot ? scrollRoot.scrollTop : window.scrollY)
+  const delta = top - lastScrollTop
+  lastScrollTop = top
+  // Keep active search and filter controls on screen; ignore nested popover scrolls.
+  if (top <= 64 || filterOpen.value || toolbarRef.value?.contains(document.activeElement)) {
+    toolbarHidden.value = false
+    directionDistance = 0
+    return
+  }
+  if (!delta) return
+  if (Math.sign(delta) !== Math.sign(directionDistance)) directionDistance = 0
+  directionDistance += delta
+  if (Math.abs(directionDistance) >= 12) {
+    toolbarHidden.value = directionDistance > 0
+    directionDistance = 0
+  }
+}
+
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const filterOpen = ref(false)
 const keywordDraft = ref("")
@@ -138,17 +163,25 @@ function onDocumentPointerDown(event: PointerEvent): void {
 function onShortcut(event: KeyboardEvent): void {
   if (event.isComposing || !(event.metaKey || event.ctrlKey) || event.key.toLocaleLowerCase() !== "k") return
   event.preventDefault()
+  toolbarHidden.value = false
   searchInputRef.value?.focus({ preventScroll: true })
 }
 onMounted(() => {
+  scrollRoot = toolbarRef.value?.closest<HTMLElement>("#billnext-inbox-root") ?? null
+  lastScrollTop = scrollRoot ? scrollRoot.scrollTop : window.scrollY
+  ;(scrollRoot ?? window).addEventListener("scroll", onFeedScroll, { passive: true })
   window.addEventListener("keydown", onShortcut)
   document.addEventListener("pointerdown", onDocumentPointerDown)
 })
 onUnmounted(() => {
+  ;(scrollRoot ?? window).removeEventListener("scroll", onFeedScroll)
   window.removeEventListener("keydown", onShortcut)
   document.removeEventListener("pointerdown", onDocumentPointerDown)
 })
 watch(() => props.scope, () => {
+  toolbarHidden.value = false
+  directionDistance = 0
+  lastScrollTop = scrollRoot ? scrollRoot.scrollTop : window.scrollY
   keywordDraft.value = ""
   keywordNotice.value = ""
   if (searchInputRef.value) searchInputRef.value.value = ""

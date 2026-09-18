@@ -1,296 +1,73 @@
-/* Hallmark · genre: atmospheric · macrostructure: Workbench showcase · design-system: design.md · designed-as-app
- * studied-DNA: reference image · scope: home content only · nav/topbar: preserved
- * Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5
- */
-
+/* Home lead: one primary recommendation and three aligned quick-scan rows.
+   Shared card typography and interactions live in quiet-ui.scss. */
 .home-showcase {
-  --home-showcase-gap: var(--space-sm);
   display: grid;
   min-width: 0;
-  gap: var(--space-xl);
+  gap: var(--home-section-gap);
 }
-
 .home-showcase-lead,
 .home-showcase-more {
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--home-showcase-gap);
+  gap: var(--layout-column-gap);
 }
-
 .home-showcase-section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-block-end: calc(var(--space-xl) * -1 + var(--space-sm));
 }
-
 .home-showcase-section-head h2 {
   min-width: 0;
   margin: 0;
-  color: var(--color-ink);
   font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-style: normal;
-  font-weight: var(--display-weight);
-  letter-spacing: var(--tracking-display);
   overflow-wrap: anywhere;
 }
-
-.video-card.is-home-layout {
-  margin: 0;
-  padding: 0;
-}
-
-.video-card.is-home-layout .video-info-row {
+.video-card.is-home-layout { margin: 0; padding: 0; }
+.video-card.is-home-featured,
+.video-card.is-home-standard { align-self: start; min-height: 0; }
+.video-card.is-home-layout .video-cover-wrap,
+.video-card.is-home-layout .video-cover-link {
   position: relative;
-}
-
-.video-card.is-home-layout .home-action-overlay {
-  position: absolute;
-  top: var(--space-xs);
-  right: var(--space-xs);
-  bottom: auto;
-  left: var(--space-xs);
-  z-index: calc(var(--z-base) + 2);
-  gap: 0;
-  width: auto;
-  height: 2.75rem;
-  margin: 0;
-  padding: 0.3125rem 0;
-  border: 0;
-  border-radius: var(--radius-control);
-  background: var(--bn-card);
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(var(--space-xs));
-  transition: opacity var(--dur-short) var(--ease-out), transform var(--dur-short) var(--ease-out);
-}
-
-.video-card.is-home-layout:hover .home-action-overlay,
-.video-card.is-home-layout:focus-within .home-action-overlay {
-  opacity: 1;
-  pointer-events: auto;
-  transform: none;
-}
-
-.video-card.is-home-layout .home-action-overlay .footer-action:focus-visible {
-  outline: var(--rule-fine) solid var(--color-focus-dark);
-  outline-offset: var(--rule-fine);
-}
-
-.video-card.is-home-featured {
-  min-height: 0;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-}
-
-.video-card.is-home-featured .video-cover-wrap {
-  position: absolute;
-  inset: 0;
-}
-
-.video-card.is-home-featured .video-cover-wrap,
-.video-card.is-home-featured .video-cover-link,
-.video-card.is-home-featured .video-cover {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: auto;
-  border-radius: var(--radius-card);
-}
-
-.video-card.is-home-featured .video-info-row {
-  position: absolute;
-  inset: auto 0 0;
-  z-index: calc(var(--z-base) + 1);
-  display: block;
-  height: auto;
-  min-height: 8.5rem;
-  padding: var(--space-xl) var(--space-lg) var(--space-lg);
-  background: linear-gradient(transparent, var(--color-overlay));
-  pointer-events: none;
-}
-
-.video-card.is-home-featured .video-up-avatar-link {
-  display: none;
-}
-
-.video-card.is-home-featured .video-title {
-  height: auto;
-  color: var(--color-accent-ink);
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: var(--display-weight);
-  line-height: 1.25;
-  text-shadow: none;
-  pointer-events: auto;
-}
-
-.video-card.is-home-featured .video-subtitle,
-.video-card.is-home-featured .video-stats,
-.video-card.is-home-featured .video-up {
-  color: var(--color-accent-ink);
-}
-
-.video-card.is-home-featured .video-subtitle,
-.video-card.is-home-featured .video-stats {
-  opacity: .82;
-}
-
-.video-card.is-home-featured .home-action-overlay {
-  top: auto;
-  right: var(--space-lg);
-  bottom: var(--space-sm);
-  left: var(--space-lg);
-  width: auto;
-}
-
-.video-card.is-home-compact {
-  display: grid;
-  grid-template-columns: minmax(8.75rem, 44.4%) minmax(0, 1fr);
-  min-height: 0;
-}
-
-.video-card.is-home-compact .video-cover-link,
-.video-card.is-home-compact .video-cover {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-card) 0 0 var(--radius-card);
-}
-
-.video-card.is-home-compact .video-cover-wrap {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
 }
-
-.video-card.is-home-compact .video-info-row {
-  grid-column: 2;
-  grid-row: 1;
-  height: 100%;
-  min-height: 0;
-  padding: var(--space-sm);
-}
-
-.video-card.is-home-compact .video-up-avatar-link {
-  display: none;
-}
-
-.video-card.is-home-compact .video-title {
-  height: auto;
-  min-height: 2.5em;
-  font-size: var(--text-sm);
-}
-
-.video-card.is-home-compact .video-subtitle {
-  margin-block-start: var(--space-xs);
-}
-
-.video-card.is-home-compact .video-stats {
-  margin-block-start: var(--space-2xs);
-}
-
-.video-card.is-home-compact .home-action-overlay {
-  top: var(--space-xs);
-  right: var(--space-xs);
-  bottom: auto;
-  left: var(--space-xs);
-  width: auto;
-}
-
-.video-card.is-home-standard {
-  align-self: start;
-}
-
-.video-card.is-home-standard .video-info-row {
-  flex: 0 0 auto;
-  height: auto;
-  min-height: 6rem;
-  padding: var(--space-sm);
-}
-
-.video-card.is-home-standard .video-cover-wrap,
-.video-card.is-home-standard .video-cover-link {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
-}
-
-.video-card.is-home-standard .video-cover {
+.video-card.is-home-layout .video-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
-@media (min-width: 40rem) {
-  .home-showcase-more {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.video-card.is-home-compact {
+  display: grid;
+  grid-template-columns: var(--home-secondary-cover-width) minmax(0, 1fr);
+  height: var(--home-secondary-row-height);
+  column-gap: var(--home-cover-text-gap);
+  align-items: start;
+  min-height: 0;
 }
-
+.video-card.is-home-compact .video-cover-wrap {
+  grid-column: 1;
+  grid-row: 1;
+  height: var(--home-secondary-row-height);
+  aspect-ratio: auto;
+}
+.video-card.is-home-compact .video-cover-link { height: 100%; aspect-ratio: auto; }
+.video-card.is-home-compact .video-info-row { grid-column: 2; grid-row: 1; }
+.home-showcase-secondary {
+  display: grid;
+  min-width: 0;
+  align-self: start;
+  align-content: start;
+  gap: var(--home-secondary-row-gap);
+}
+.video-card.is-home-compact .video-meta { max-width: var(--home-secondary-text-max); }
+.video-card.is-home-layout .video-meta-slot { margin-top: var(--home-title-meta-gap); }
+/* Preview-only comparison: about 5% less primary width, same content. */
+.is-compact-hero-preview { --home-primary-share: 53fr; --home-secondary-share: 47fr; }
 @media (min-width: 60rem) {
   .home-showcase-lead {
-    aspect-ratio: 3.07 / 1;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, var(--home-primary-share)) minmax(0, var(--home-secondary-share));
+    align-items: start;
   }
-
-  .home-showcase-lead > .is-home-featured {
-    aspect-ratio: auto;
-    grid-column: 1 / span 7;
-    grid-row: 1 / span 3;
-  }
-
-  .home-showcase-lead > .is-home-compact {
-    grid-column: 8 / -1;
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .home-showcase-lead > .is-home-compact .video-cover-wrap {
-    width: auto;
-    height: 100%;
-  }
-
-  .home-showcase-more {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-}
-
-@media (min-width: 78rem) {
-  .home-showcase-more {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 92rem) {
-  .home-showcase-more {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (hover: none), (pointer: coarse) {
-  .video-card.is-home-layout:focus-within .home-action-overlay {
-    opacity: 1;
-    pointer-events: auto;
-    transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .video-card.is-home-layout .home-action-overlay {
-    transform: none;
-    transition-duration: var(--dur-micro);
-  }
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .video-card.is-home-layout .home-action-overlay { background: transparent; }
 }

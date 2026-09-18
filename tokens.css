@@ -1,44 +1,72 @@
-/* Hallmark · genre: atmospheric · macrostructure: Workbench · design-system: design.md · designed-as-app
- * theme: custom · vibe: "clear prism glass, quiet cyan, deep ink" · paper: oklch(95% 0.025 232) · accent: oklch(50% 0.18 224)
- * display: BillNext Shanggu · body: BillNext Onest + BillNext Shanggu · axes: light / humanist-sans / cool
- * Hallmark · pre-emit critique: P5 H4 E5 S5 R5 V4 · contrast: pass (40–41) · nav: N7 tool rail · footer: n/a · slop: pass (42–45)
- * honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30)
- */
+/* BillNext: content first, neutral surfaces and a single blue accent. */
 :root {
-  --color-paper: oklch(95% 0.025 232);
-  --color-paper-2: oklch(91% 0.038 238);
-  --color-paper-3: oklch(86% 0.055 246);
-  --color-ink: oklch(24% 0.055 257);
-  --color-ink-2: oklch(39% 0.045 255);
-  --color-rule: oklch(83% 0.04 240 / 72%);
-  --color-rule-2: oklch(92% 0.025 232 / 70%);
-  --color-muted: oklch(52% 0.04 252);
-  --color-neutral: oklch(44% 0.04 252);
-  --color-accent: oklch(50% 0.18 224);
-  --color-accent-hover: oklch(45% 0.18 224);
-  --color-accent-soft: oklch(88% 0.075 224 / 66%);
-  --color-accent-ink: oklch(98% 0.008 232);
-  --color-focus: oklch(48% 0.19 224);
+  /* Desktop layout: shared by home, following and library feeds. */
+  --layout-sidebar-width: 56px;
+  --layout-sidebar-expanded-width: 196px;
+  --layout-sidebar-inset: 16px;
+  --layout-content-max: 1480px;
+  --layout-page-padding: 32px;
+  --layout-grid-min: 260px;
+  --layout-column-gap: 16px;
+  --layout-row-gap: 32px;
+  --layout-section-gap: 40px;
+  --layout-heading-gap: 16px;
+  --home-section-gap: 24px;
+  --home-secondary-cover-width: 220px;
+  --home-secondary-row-height: 124px;
+  --home-column-gap: 24px;
+  --home-primary-share: 56fr;
+  --home-secondary-share: 44fr;
+  --home-secondary-row-gap: 28px;
+  --home-secondary-text-max: 300px;
+  --home-cover-title-gap: 12px;
+  --home-title-meta-gap: 8px;
+  --home-cover-text-gap: 16px;
+  --video-title-size: 14px;
+  --video-title-leading: 20px;
+  --video-title-weight: 500;
+  --video-meta-size: 12px;
+  --video-meta-leading: 17px;
+  --video-meta-color: #8A8A8E;
+  --radius-small: 6px;
+  --radius-medium: 10px;
+  --radius-large: 14px;
+  --surface: #FFFFFF;
+  --text-tertiary: #9A9AA0;
+  --color-paper: #F5F5F7;
+  --color-paper-2: #F0F1F3;
+  --color-paper-3: #EAEBEE;
+  --color-ink: #1D1D1F;
+  --color-ink-2: #6E6E73;
+  --color-rule: rgba(0,0,0,.06);
+  --color-rule-2: rgba(0,0,0,.04);
+  --color-muted: #86868B;
+  --color-neutral: #6E6E73;
+  --color-accent: #0A84FF;
+  --color-accent-hover: #0071E3;
+  --color-accent-soft: rgba(10,132,255,.10);
+  --color-accent-ink: #FFFFFF;
+  --color-focus: #0A84FF;
   --color-focus-dark: oklch(76% 0.14 224);
   --color-error: oklch(50% 0.18 25);
   --color-success: oklch(48% 0.09 150);
   --color-overlay: oklch(18% 0.055 258 / 52%);
 
-  --color-paper-dark: oklch(18% 0.04 258);
-  --color-paper-2-dark: oklch(22% 0.05 256);
-  --color-paper-3-dark: oklch(28% 0.06 252);
-  --color-ink-dark: oklch(94% 0.02 235);
-  --color-ink-2-dark: oklch(79% 0.03 240);
+  --color-paper-dark: #1C1C1E;
+  --color-paper-2-dark: #2C2C2E;
+  --color-paper-3-dark: #3A3A3C;
+  --color-ink-dark: #F5F5F7;
+  --color-ink-2-dark: #B8B8BE;
   --color-rule-dark: oklch(54% 0.07 240 / 58%);
   --color-rule-2-dark: oklch(46% 0.06 245 / 48%);
-  --color-muted-dark: oklch(69% 0.035 244);
+  --color-muted-dark: #98989F;
 
   --color-prism: oklch(66% 0.17 300);
-  --color-prism-soft: oklch(82% 0.1 300 / 28%);
-  --glass-surface: oklch(99% 0.008 232 / 62%);
-  --glass-surface-strong: oklch(99% 0.006 232 / 78%);
-  --glass-surface-dark: oklch(28% 0.045 255 / 66%);
-  --glass-surface-dark-strong: oklch(31% 0.05 252 / 82%);
+  --color-prism-soft: transparent;
+  --glass-surface: #FFFFFF;
+  --glass-surface-strong: #FFFFFF;
+  --glass-surface-dark: #2C2C2E;
+  --glass-surface-dark-strong: #2C2C2E;
   --glass-border: oklch(99% 0.006 232 / 68%);
   --glass-border-dark: oklch(90% 0.04 235 / 18%);
   --glass-blur: 22px;
@@ -79,10 +107,10 @@
 
   --rule-hair: 1px;
   --rule-fine: 2px;
-  --radius-card: 0.875rem;
-  --radius-input: 0.625rem;
-  --radius-control: 0.625rem;
-  --radius-window: 1.375rem;
+  --radius-card: var(--radius-medium);
+  --radius-input: var(--radius-medium);
+  --radius-control: var(--radius-small);
+  --radius-window: var(--radius-large);
   --radius-pill: 999px;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);

@@ -7,7 +7,7 @@
 
     <section v-else class="inbox-content" :class="{ 'home-showcase-preview': previewTab === 'recommended', 'dynamic-inbox-content': previewTab !== 'recommended' }">
       <article v-if="previewTab !== 'recommended'" class="group-block">
-        <h2><span>今天</span><small>40</small></h2>
+        <h2><span>今天</span><small>{{ visibleCards.length }}</small></h2>
         <div class="group-list">
           <VideoCard
             v-for="card in visibleCards"
@@ -26,10 +26,10 @@
           />
         </div>
       </article>
-      <section v-else class="home-showcase">
+      <section v-else class="home-showcase" :class="{ 'is-compact-hero-preview': compactHeroPreview }">
         <div class="home-showcase-lead">
-          <VideoCard
-            v-for="(card, index) in visibleCards.slice(0, 4)"
+        <VideoCard
+            v-for="card in visibleCards.slice(0, 1)"
             :key="card.dynamicId"
             :card="card"
             :pending-map="{}"
@@ -37,14 +37,32 @@
             :open-video-on-want-watch="false"
             :following-up-map="followingMap"
             relation-pending-mid=""
-            :layout-variant="index === 0 ? 'featured' : 'compact'"
+            layout-variant="featured"
             home-highlights
             home-layout
             @want-watch="markWant(card)"
             @help-read="startReading(card)"
             @dislike="hideCard(card)"
           />
-        </div>
+        <TransitionGroup class="home-showcase-secondary" tag="div" name="home-card">
+          <VideoCard
+            v-for="card in visibleCards.slice(1, 4)"
+            :key="card.dynamicId"
+            :card="card"
+            :pending-map="{}"
+            :want-watch-map="wantWatchMap"
+            :open-video-on-want-watch="false"
+            :following-up-map="followingMap"
+            relation-pending-mid=""
+            layout-variant="compact"
+            home-highlights
+            home-layout
+            @want-watch="markWant(card)"
+            @help-read="startReading(card)"
+            @dislike="hideCard(card)"
+          />
+        </TransitionGroup>
+      </div>
         <div class="home-showcase-section-head"><h2>更多推荐</h2></div>
         <div class="home-showcase-more">
           <VideoCard
@@ -132,10 +150,11 @@ const cards = ref<VideoDynamicCard[]>(titles.map((title, index) => ({
   tag: ["娱乐", "知识", "娱乐", "知识", "知识"][index % 5],
 })))
 
+const compactHeroPreview = new URL(window.location.href).searchParams.get("hero") === "compact"
 const previewScreen = new URL(window.location.href).searchParams.get("screen")
 const previewTab = ref(previewScreen === "checklist" ? "checklist" : previewScreen === "home" ? "recommended" : "following")
 const watchedChecklistIds = ref<string[]>(["imdb:tt0111161", "imdb:tt0068646"])
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = ref(true)
 const wantWatchMap = ref<Record<string, boolean>>({})
 const followingMap = Object.fromEntries(cards.value.map((card, index) => [card.upMid, index % 3 === 0]))
 const homeBlockedKeywords = ref(readPersistedState().homeBlockedKeywords)
